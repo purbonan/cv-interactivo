@@ -1,0 +1,3775 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CONFLICTWATCH — Irán</title>
+  <meta name="description"
+    content="Dashboard en tiempo real del conflicto en Oriente Medio. GDELT, The Guardian, BBC, Al Jazeera, Reuters y 21 feeds RSS.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬡</text></svg>">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#080A0F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta property="og:title" content="CONFLICTWATCH — Irán">
+  <meta property="og:description" content="Dashboard en tiempo real del conflicto en Oriente Medio.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CONFLICTWATCH — Irán">
+  <meta name="twitter:description" content="Dashboard en tiempo real del conflicto en Oriente Medio.">
+  <link rel="preconnect" href="https://basemaps.cartocdn.com" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <style>
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 16px;
+      z-index: 10000;
+      padding: 8px 16px;
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 12px;
+      text-decoration: none;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .skip-link:focus {
+      top: 0;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      font-weight: inherit;
+      font-size: inherit;
+      line-height: inherit;
+    }
+    .commodity-list, .forex-list, .keywords-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #080A0F;
+      --bg2: #0D1017;
+      --bg3: #111620;
+      --border: #1E2535;
+      --accent: #FF3B3B;
+      --accent2: #FF7A00;
+      --green: #00FF88;
+      --blue: #00B4FF;
+      --yellow: #FFD700;
+      --text: #E8EAF0;
+      --muted: #6f7994;
+      --mono: 'Space Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    /* ── TICKER ─────────────────────────────────────────────────────── */
+    .ticker {
+      background: #0A0C12;
+      border-bottom: 1px solid var(--accent);
+      height: 30px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      /* clips the scrolling text */
+      position: relative;
+      z-index: 100;
+    }
+
+    /* The label must stay ON TOP of scrolling text — position sticky */
+    .ticker-label {
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 0 14px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      flex-shrink: 0;
+      letter-spacing: 2px;
+      position: relative;
+      z-index: 10;
+      /* always above scrolling items */
+      box-shadow: 6px 0 16px rgba(8, 10, 15, 0.8);
+      /* prevents bleed */
+    }
+
+    .ticker-scroll {
+      flex: 1;
+      overflow: hidden;
+      height: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .ticker-track {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      animation: ticker 70s linear infinite;
+      will-change: transform;
+    }
+
+    .ticker-track:hover {
+      animation-play-state: paused;
+    }
+
+    .ticker-item {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: #bcc4d8;
+      padding: 0 32px;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .ticker-item .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .ticker-item.high .dot {
+      background: var(--accent);
+      animation: pulse 1.2s infinite;
+    }
+
+    .ticker-item.med .dot {
+      background: var(--accent2);
+    }
+
+    .ticker-sep {
+      color: var(--border);
+      margin: 0 4px;
+    }
+    .ticker-pause-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 10px;
+      cursor: pointer;
+      padding: 0 8px;
+      height: 100%;
+      flex-shrink: 0;
+    }
+    .ticker-pause-btn:hover, .ticker-pause-btn:focus-visible {
+      color: var(--text);
+    }
+
+    @keyframes ticker {
+      0% {
+        transform: translateX(0)
+      }
+
+      100% {
+        transform: translateX(-50%)
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.3
+      }
+    }
+
+    /* ── STATUS BAR ──────────────────────────────────────────────────── */
+    .status-bar {
+      background: #090B10;
+      border-bottom: 1px solid rgba(30, 37, 53, 0.6);
+      height: 20px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 18px;
+      font-family: var(--mono);
+      font-size: 9px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      cursor: help;
+    }
+
+    .status-dot.offline {
+      background: var(--accent);
+      animation: pulse 1.2s infinite;
+    }
+
+    .status-dot.orange {
+      background: var(--accent2);
+    }
+
+    /* ── HEADER ──────────────────────────────────────────────────────── */
+    header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      height: 50px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 20px;
+      position: relative;
+      z-index: 50;
+    }
+
+    .logo {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--accent);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    .header-stats {
+      display: flex;
+      gap: 24px;
+      margin-left: 16px;
+    }
+
+    .stat-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-num {
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .stat-num.orange {
+      color: var(--accent2);
+    }
+
+    .stat-num.blue {
+      color: var(--blue);
+    }
+
+    .stat-label {
+      font-size: 8px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* ── TERMÓMETRO HORIZONTAL DE TENSIÓN ───────────────────────────── */
+    .thermo-panel {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      right: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      background: rgba(9, 11, 16, 0.82);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px 10px;
+      backdrop-filter: blur(8px);
+      z-index: 400;
+      pointer-events: all;
+    }
+
+    /* Fila superior: título + badge + (?) */
+    .thermo-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .thermo-title {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--muted);
+    }
+
+    .thermo-right {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .thermo-trend {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    /* Botón (?) */
+    .thermo-info-btn {
+      font-family: var(--mono);
+      font-size: 8px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid var(--muted);
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.2s, color 0.2s;
+      user-select: none;
+    }
+    .thermo-info-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* Tooltip (se abre hacia arriba) */
+    .thermo-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      pointer-events: none;
+      background: rgba(9, 11, 16, 0.97);
+      border: 1px solid rgba(0, 180, 255, 0.25);
+      border-radius: 5px;
+      padding: 9px 13px;
+      font-family: var(--mono);
+      font-size: 8.5px;
+      color: var(--muted);
+      line-height: 1.8;
+      white-space: nowrap;
+      z-index: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+    .thermo-tooltip strong {
+      color: var(--text);
+      display: block;
+      margin-bottom: 3px;
+      letter-spacing: 1px;
+    }
+    .thermo-tooltip.visible { display: block; }
+
+    /* Fila del termómetro */
+    .thermo-body {
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    /* Contenedor del tubo (solo el tubo, escala es hermana) */
+    .thermo-tube-wrap {
+      flex: 1;
+    }
+
+    /* Tubo horizontal */
+    .thermo-tube {
+      height: 18px;
+      border-radius: 9px;
+      border: 1.5px solid rgba(90, 98, 120, 0.40);
+      overflow: hidden;
+      position: relative;
+      background: rgba(13, 16, 23, 0.65);
+    }
+
+    /* Zonas de color dentro del tubo (izq=baja, der=alta) */
+    .thermo-zone-green  { position:absolute; left:0;    top:0; bottom:0; width:40%;  background:rgba(0,255,136,0.10); }
+    .thermo-zone-orange { position:absolute; left:40%;  top:0; bottom:0; width:30%;  background:rgba(255,122,0,0.10); }
+    .thermo-zone-red    { position:absolute; left:70%;  top:0; bottom:0; right:0;    background:rgba(255,59,59,0.13); }
+
+    /* Separadores de zona */
+    .thermo-zone-sep {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: rgba(90, 98, 120, 0.22);
+    }
+
+    /* Mercurio: crece de izquierda a derecha */
+    .thermo-mercury {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 0%;
+      transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                  background-color 0.6s ease;
+      border-radius: 0 3px 3px 0;
+    }
+
+    /* Escala debajo del tubo */
+    .thermo-scale {
+      position: relative;
+      height: 10px;
+    }
+    .thermo-scale span {
+      position: absolute;
+      font-family: var(--mono);
+      font-size: 8px;
+      font-weight: 700;
+      color: rgba(90, 98, 120, 0.85);
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .btn {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-live {
+      background: var(--accent);
+      color: #fff;
+      animation: livepulse 2s infinite;
+    }
+
+    .btn-live:hover {
+      background: #ff5555;
+    }
+
+    @keyframes livepulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(255, 59, 59, 0)
+      }
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .clock {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      min-width: 72px;
+      text-align: right;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 310px 1fr 310px;
+      height: calc(100vh - 100px);
+    }
+
+    /* ── LEFT: FEED ──────────────────────────────────────────────────── */
+    .left-panel {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--muted);
+    }
+
+    .filter-bar {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      font-family: var(--mono);
+      font-size: 8px;
+      padding: 3px 7px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+    }
+
+    .filter-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255, 59, 59, 0.08);
+    }
+
+    .filter-btn.active.orange {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(255, 122, 0, 0.08);
+    }
+
+    .feed {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .feed::-webkit-scrollbar {
+      width: 2px;
+    }
+
+    .feed::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .news-item {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(30, 37, 53, 0.7);
+      cursor: pointer;
+      transition: background 0.12s;
+      border-left: 3px solid transparent;
+    }
+
+    .news-item:hover {
+      background: rgba(17, 22, 32, 0.8);
+    }
+
+    .news-item.active {
+      background: var(--bg3);
+      border-left-color: var(--accent);
+    }
+
+    .news-badge {
+      font-family: var(--mono);
+      font-size: 7px;
+      letter-spacing: 1px;
+      padding: 2px 5px;
+      border-radius: 2px;
+      display: inline-block;
+      margin-bottom: 5px;
+    }
+
+    .badge-HIGH {
+      background: rgba(255, 59, 59, 0.18);
+      color: var(--accent);
+      border: 1px solid rgba(255, 59, 59, 0.3);
+    }
+
+    .badge-MED {
+      background: rgba(255, 122, 0, 0.14);
+      color: var(--accent2);
+      border: 1px solid rgba(255, 122, 0, 0.3);
+    }
+
+    .badge-LOW {
+      background: rgba(0, 180, 255, 0.09);
+      color: var(--blue);
+      border: 1px solid rgba(0, 180, 255, 0.2);
+    }
+
+    .news-title {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-bottom: 5px;
+    }
+
+    .news-body {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .news-meta {
+      display: flex;
+      align-items: center;
+      margin-top: 7px;
+      gap: 8px;
+    }
+
+    .news-conf {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--green);
+    }
+
+    .news-time {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    .news-src {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--muted);
+    }
+
+    .source-flags {
+      font-size: 12px;
+      margin-top: 4px;
+      letter-spacing: 2px;
+    }
+
+    @keyframes flash-in {
+      0% {
+        background: rgba(255, 59, 59, 0.1)
+      }
+
+      100% {
+        background: transparent
+      }
+    }
+
+    .news-item.new-item,
+    .cluster-item.new-item {
+      animation: flash-in 2s ease;
+    }
+
+    /* ── Pulsos Agrupados (Stacking) ─────────────────────────── */
+    .cluster-item {
+      border-bottom: 1px solid rgba(30, 37, 53, 0.7);
+    }
+    .cluster-header {
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: background 0.12s;
+      border-left: 3px solid transparent;
+      position: relative;
+    }
+    .cluster-header:hover {
+      background: rgba(17, 22, 32, 0.8);
+    }
+    .cluster-item.active > .cluster-header {
+      background: var(--bg3);
+      border-left-color: var(--accent);
+    }
+    .cluster-top-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .cluster-stack-badge {
+      font-family: var(--mono);
+      font-size: 7px;
+      letter-spacing: 0.5px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      background: rgba(0, 255, 136, 0.10);
+      color: var(--green);
+      border: 1px solid rgba(0, 255, 136, 0.25);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .cluster-conf-badge {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--green);
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .cluster-conf-badge .conf-bar {
+      display: inline-block;
+      width: 32px;
+      height: 4px;
+      background: rgba(90,98,120,0.25);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+    .cluster-conf-badge .conf-fill {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      border-radius: 2px;
+      transition: width 0.5s;
+    }
+    .cluster-headline {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-bottom: 5px;
+    }
+    .cluster-meta {
+      display: flex;
+      align-items: center;
+      margin-top: 7px;
+      gap: 8px;
+    }
+    .cluster-chevron {
+      font-size: 8px;
+      color: var(--muted);
+      transition: transform 0.2s;
+      margin-left: 2px;
+    }
+    .cluster-item.open .cluster-chevron {
+      transform: rotate(180deg);
+    }
+    .cluster-children {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease;
+      background: rgba(10, 13, 20, 0.5);
+      border-left: 3px solid rgba(0, 255, 136, 0.3);
+      margin-left: 10px;
+    }
+    .cluster-item.open .cluster-children {
+      max-height: 2000px;
+    }
+    .cluster-child {
+      padding: 8px 14px 8px 20px;
+      border-bottom: 1px solid rgba(30, 37, 53, 0.35);
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .cluster-child:last-child {
+      border-bottom: none;
+    }
+    .cluster-child:hover {
+      background: rgba(17, 22, 32, 0.6);
+    }
+    .cluster-child-title {
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.3;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+    .cluster-child-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--muted);
+    }
+
+    /* Skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, var(--border) 0%, #252d42 50%, var(--border) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 2px;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0
+      }
+
+      100% {
+        background-position: -200% 0
+      }
+    }
+
+    .skel-news {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .skel-line {
+      height: 10px;
+      margin-bottom: 7px;
+    }
+
+    .skel-short {
+      width: 40%;
+    }
+
+    .skel-med {
+      width: 75%;
+    }
+
+    /* ── MAP ─────────────────────────────────────────────────────────── */
+    .map-area {
+      position: relative;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    #mapContainer {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Leaflet dark overrides */
+    .leaflet-container {
+      background: #080A0F !important;
+    }
+
+    .leaflet-tile {
+      filter: brightness(0.65) saturate(0.25) hue-rotate(200deg);
+    }
+
+    .leaflet-control-zoom a {
+      background: var(--bg2) !important;
+      color: var(--text) !important;
+      border-color: var(--border) !important;
+      font-size: 14px !important;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background: var(--bg3) !important;
+      color: var(--accent) !important;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: rgba(11, 14, 20, 0.97);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--mono);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+    }
+
+    .leaflet-popup-tip {
+      background: rgba(11, 14, 20, 0.97);
+    }
+
+    .leaflet-popup-close-button {
+      color: var(--muted) !important;
+      font-size: 16px !important;
+    }
+
+    /* ── UNIFIED MAP FILTERS PANEL ─────────────────────────────────── */
+    .map-filters-panel {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(8, 10, 15, 0.85);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 180px;
+    }
+
+    .mfp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: none;
+      border: none;
+      border-bottom: 1px solid rgba(30, 37, 53, 0.6);
+      padding: 0 2px 8px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .mfp-header:hover .mfp-title { color: var(--text); }
+    .mfp-header:hover .mfp-chevron { color: var(--blue); }
+
+    .mfp-title {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      color: #8a94a8;
+      transition: color 0.2s;
+    }
+
+    .mfp-chevron {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      transition: transform 0.25s ease, color 0.2s;
+    }
+
+    .map-filters-panel.collapsed .mfp-chevron {
+      transform: rotate(-90deg);
+    }
+
+    .mfp-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: hidden;
+      max-height: 600px;
+      opacity: 1;
+      transition: max-height 0.3s ease, opacity 0.2s ease;
+    }
+
+    .map-filters-panel.collapsed .mfp-body {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .map-filters-panel.collapsed {
+      gap: 0;
+    }
+
+    .map-filters-panel.collapsed .mfp-header {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .mfp-section {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mfp-section-label {
+      font-family: var(--mono);
+      font-size: 7px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      padding-left: 2px;
+      opacity: 0.7;
+    }
+
+    .mfp-section + .mfp-section {
+      border-top: 1px solid rgba(30, 37, 53, 0.4);
+      padding-top: 10px;
+    }
+
+    .mfp-severity-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .mfp-sev-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: rgba(13, 16, 23, 0.6);
+      border: 1px solid rgba(30, 37, 53, 0.5);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mfp-sev-pill.active {
+      border-color: var(--blue);
+      color: var(--text);
+      background: rgba(0, 180, 255, 0.06);
+    }
+
+    .mfp-sev-pill:hover {
+      border-color: var(--blue);
+      color: var(--text);
+    }
+
+    .mfp-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .mfp-dot-red { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .mfp-dot-ora { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+    .mfp-dot-blu { background: var(--blue); box-shadow: 0 0 8px var(--blue); }
+
+    .mfp-sev-count {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .mfp-osint-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .mfp-osint-group .osint-btn {
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .mfp-osint-group .osint-dot {
+      width: 8px;
+      height: 8px;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    .mfp-osint-group .osint-count {
+      font-size: 10px;
+    }
+
+    .mfp-vista-limpia {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--muted);
+      background: rgba(13, 16, 23, 0.4);
+      border: 1px solid rgba(30, 37, 53, 0.5);
+      border-radius: 6px;
+      padding: 7px 12px;
+      cursor: pointer;
+      text-align: center;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+
+    .mfp-vista-limpia:hover {
+      background: rgba(0, 180, 255, 0.06);
+      border-color: var(--blue);
+      color: var(--text);
+    }
+
+    .mfp-vista-limpia.active {
+      color: var(--green);
+      border-color: rgba(0, 255, 136, 0.3);
+      background: rgba(0, 255, 136, 0.06);
+    }
+
+    /* ── RIGHT PANEL ─────────────────────────────────────────────────── */
+    .right-panel {
+      background: var(--bg2);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .right-panel::-webkit-scrollbar {
+      width: 2px;
+    }
+
+    .right-panel::-webkit-scrollbar-thumb {
+      background: var(--border);
+    }
+
+    .rpanel-section {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+    }
+
+    .rpanel-title {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      color: #8a94a8;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    /* ── MARKETS (premium) ───────────────────────────────────────────── */
+    .commodity-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(30, 37, 53, 0.5);
+      gap: 8px;
+    }
+
+    .commodity-card:last-child {
+      border-bottom: none;
+    }
+
+    .commodity-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .commodity-price {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .commodity-price.up {
+      color: var(--green);
+    }
+
+    .commodity-price.down {
+      color: var(--accent);
+    }
+
+    .commodity-delta {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 3px;
+    }
+
+    .commodity-delta.up {
+      color: var(--green);
+    }
+
+    .commodity-delta.down {
+      color: var(--accent);
+    }
+
+    .commodity-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+    }
+
+    .commodity-chart {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      height: 28px;
+      width: 82px;
+    }
+
+    /* FOREX */
+    .forex-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+
+    .forex-cell {
+      background: rgba(8, 10, 15, 0.6);
+      border-radius: 6px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      transition: border-color 0.3s;
+    }
+
+    .forex-cell:hover {
+      border-color: rgba(0, 180, 255, 0.3);
+    }
+
+    .forex-pair {
+      font-family: var(--mono);
+      font-size: 8px;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .forex-price {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .forex-delta {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 3px;
+    }
+
+    /* ── KEYWORDS (premium) ──────────────────────────────────────────── */
+    .kw-item {
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(30, 37, 53, 0.5);
+    }
+
+    .kw-item:last-child {
+      border-bottom: none;
+    }
+
+    .kw-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .kw-name {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .kw-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .kw-count {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+    }
+
+    .kw-trend {
+      font-family: var(--mono);
+      font-size: 9px;
+    }
+
+    .kw-bar-track {
+      height: 2px;
+      background: rgba(30, 37, 53, 0.8);
+      border-radius: 1px;
+    }
+
+    .kw-bar-fill {
+      height: 100%;
+      border-radius: 1px;
+      transition: width 1s ease;
+    }
+
+    /* ── MARKET SENTIMENT TAG ────────────────────────────────────────── */
+    .sentiment-tag {
+      font-family: var(--mono);
+      font-size: 9px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      letter-spacing: 1px;
+    }
+
+    .sentiment-tag.bear {
+      background: rgba(255, 59, 59, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(255, 59, 59, 0.3);
+    }
+
+    .sentiment-tag.bull {
+      background: rgba(0, 255, 136, 0.10);
+      color: var(--green);
+      border: 1px solid rgba(0, 255, 136, 0.25);
+    }
+
+    .sentiment-tag.mix {
+      background: rgba(255, 122, 0, 0.10);
+      color: var(--accent2);
+      border: 1px solid rgba(255, 122, 0, 0.25);
+    }
+
+    /* ── DIVIDER ─────────────────────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 10px 0;
+    }
+
+    /* ── LEAFLET DARK THEME ──────────────────────────────────────────── */
+    .leaflet-popup-content-wrapper {
+      background: #0D1017;
+      border: 1px solid #1E2535;
+      color: #E8EAF0;
+      border-radius: 6px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+    }
+
+    .leaflet-popup-tip {
+      background: #1E2535;
+    }
+
+    .leaflet-popup-close-button {
+      color: #5A6278 !important;
+      font-size: 16px !important;
+      top: 6px !important;
+      right: 8px !important;
+    }
+
+    .leaflet-popup-close-button:hover {
+      color: #E8EAF0 !important;
+    }
+
+    .leaflet-popup-content {
+      margin: 12px 14px;
+    }
+
+    /* Cluster personalizado */
+    .marker-cluster-small,
+    .marker-cluster-medium,
+    .marker-cluster-large {
+      background-color: rgba(255, 59, 59, 0.18) !important;
+    }
+
+    .marker-cluster-small div,
+    .marker-cluster-medium div,
+    .marker-cluster-large div {
+      background-color: rgba(255, 59, 59, 0.5) !important;
+      color: #fff !important;
+      font-family: 'Space Mono', monospace !important;
+      font-size: 10px !important;
+      font-weight: 700 !important;
+    }
+
+    /* ── PULSO para marcadores HIGH ─────────────────────────────────── */
+    @keyframes pulse-red {
+      0% {
+        box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.8);
+      }
+
+      70% {
+        box-shadow: 0 0 0 12px rgba(255, 59, 59, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 59, 59, 0);
+      }
+    }
+
+    .marker-pulse {
+      animation: pulse-red 2s infinite;
+      border-radius: 50%;
+    }
+
+    /* ── IODA outage pulse ── */
+    @keyframes ioda-pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 0.15; }
+    }
+    .ioda-label-pulse {
+      animation: ioda-pulse 3s ease-in-out infinite;
+    }
+
+    /* ── COUNTDOWN / FRESHNESS ───────────────────────────────────────── */
+    .freshness-bar {
+      height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+
+    .freshness-fill {
+      height: 100%;
+      border-radius: 1px;
+      background: var(--green);
+      transition: width 1s linear, background 0.5s;
+    }
+
+    .freshness-fill.stale {
+      background: var(--accent);
+    }
+
+    .next-update {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--muted);
+      margin-left: 8px;
+    }
+
+    /* ── MARKET SIGNAL BADGE ─────────────────────────────────────────── */
+    .market-signal {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 5px;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+      display: inline-block;
+    }
+
+    .market-signal.sync {
+      background: rgba(0, 255, 136, 0.12);
+      color: var(--green);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+    }
+
+    .market-signal.lag {
+      background: rgba(255, 122, 0, 0.12);
+      color: var(--accent2);
+      border: 1px solid rgba(255, 122, 0, 0.3);
+    }
+
+    .market-signal.fear {
+      background: rgba(255, 59, 59, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(255, 59, 59, 0.3);
+    }
+
+    .market-signal.decouple {
+      background: rgba(0, 180, 255, 0.12);
+      color: var(--blue);
+      border: 1px solid rgba(0, 180, 255, 0.3);
+    }
+
+    .market-signal.neutral {
+      background: rgba(90, 98, 120, 0.15);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    /* ── EVENTOS VERIFICADOS ───────────────────────────────────────── */
+    .ev-item {
+      background: rgba(12, 14, 22, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 10px;
+      margin-bottom: 7px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .ev-item:hover {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .ev-item.high {
+      border-left: 2px solid var(--accent);
+    }
+
+    .ev-item.med {
+      border-left: 2px solid var(--accent2);
+    }
+
+    .ev-item.low {
+      border-left: 2px solid var(--blue);
+    }
+
+    .ev-headline {
+      font-family: var(--sans);
+      font-size: 10px;
+      line-height: 1.45;
+      color: var(--text);
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    .ev-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 5px;
+    }
+
+    .ev-badge {
+      font-family: var(--mono);
+      font-size: 7px;
+      padding: 2px 5px;
+      border-radius: 2px;
+      letter-spacing: 0.5px;
+    }
+
+    .ev-badge.high {
+      background: rgba(255, 59, 59, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(255, 59, 59, 0.3);
+    }
+
+    .ev-badge.med {
+      background: rgba(255, 122, 0, 0.12);
+      color: var(--accent2);
+      border: 1px solid rgba(255, 122, 0, 0.3);
+    }
+
+    .ev-badge.low {
+      background: rgba(0, 180, 255, 0.12);
+      color: var(--blue);
+      border: 1px solid rgba(0, 180, 255, 0.3);
+    }
+
+    /* Barra de verificación */
+    .ev-verif-track {
+      height: 3px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .ev-verif-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.6s ease;
+    }
+
+    .ev-verif-fill.high {
+      background: var(--accent);
+    }
+
+    .ev-verif-fill.med {
+      background: var(--accent2);
+    }
+
+    .ev-verif-fill.low {
+      background: var(--blue);
+    }
+
+    /* ── STALENESS BADGE ─────────────────────────────────────────────── */
+    .stale-badge {
+      font-family: var(--mono);
+      font-size: 7px;
+      padding: 1px 5px;
+      border-radius: 2px;
+      background: rgba(255, 122, 0, 0.15);
+      color: var(--accent2);
+      border: 1px solid rgba(255, 122, 0, 0.3);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── OSINT BUTTON BASE STYLES ──────────────────────────────────── */
+
+    .osint-btn {
+      background: rgba(13, 16, 23, 0.6);
+      border: 1px solid rgba(30, 37, 53, 0.5);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 8px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .osint-btn.active {
+      border-color: var(--blue);
+      color: var(--text);
+      background: rgba(0, 180, 255, 0.06);
+    }
+
+    .osint-btn:hover {
+      border-color: var(--blue);
+      color: var(--text);
+    }
+
+    .osint-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .osint-count {
+      font-family: var(--mono);
+      font-size: 7px;
+      color: var(--muted);
+      margin-left: auto;
+      min-width: 18px;
+      text-align: right;
+    }
+
+    .osint-btn.active .osint-count {
+      color: var(--text);
+    }
+
+    /* ── Modal de Tendencias ─────────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-content {
+      background: var(--bg2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      transform: translateY(20px);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.open .modal-content {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 20px;
+      padding: 4px;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+    }
+
+    .modal-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-art {
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      border-left: 3px solid var(--accent);
+    }
+
+    .modal-art-title {
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .modal-art-meta {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+    }
+
+    .modal-art-link {
+      color: var(--blue);
+      text-decoration: none;
+      margin-left: auto;
+    }
+
+    .modal-art-link:hover {
+      text-decoration: underline;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ticker-track {
+        animation: none !important;
+      }
+      .ticker-item.high .dot,
+      .btn-live::before,
+      .skeleton {
+        animation: none !important;
+      }
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* ── Mobile nav (oculto en desktop) ─────────────────────── */
+    .mobile-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 48px; background: var(--bg2); border-top: 1px solid var(--border);
+      z-index: 600; justify-content: space-around; align-items: center;
+    }
+    .mobile-nav-btn {
+      background: none; border: none; color: var(--muted);
+      font-size: 11px; font-family: var(--mono); padding: 8px 16px;
+      cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .mobile-nav-btn.active { color: var(--green); border-bottom: 2px solid var(--green); }
+
+    /* ── Sidebar toggle (oculto en desktop) ─────────────────── */
+    .sidebar-toggle {
+      display: none; background: var(--bg3); border: 1px solid var(--border);
+      color: var(--muted); font-size: 9px; font-family: var(--mono);
+      padding: 4px 10px; border-radius: 4px; cursor: pointer;
+      letter-spacing: 1px; text-transform: uppercase; margin-left: auto;
+    }
+    .sidebar-toggle:hover, .sidebar-toggle:focus-visible { color: var(--text); }
+
+    /* ── Tablet: max-width 1024px ────────────────────────────── */
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 260px 1fr;
+      }
+      .left-panel { width: 260px; }
+      .right-panel {
+        position: fixed; right: -310px; top: 100px; bottom: 0;
+        width: 310px; z-index: 500; transition: right 0.3s ease;
+        background: var(--bg); border-left: 1px solid var(--border);
+        box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+      }
+      .right-panel.sidebar-open { right: 0; }
+      .sidebar-toggle { display: flex; }
+      header { gap: 12px; padding: 0 12px; }
+      .stat-num { font-size: 16px; }
+    }
+
+    /* ── Móvil: max-width 768px ──────────────────────────────── */
+    @media (max-width: 768px) {
+      body { overflow: hidden; height: 100vh; }
+      .layout {
+        display: block; position: relative;
+        height: calc(100vh - 140px - 48px); overflow: hidden;
+      }
+      .layout { position: relative; }
+      .left-panel, .map-area, .right-panel {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        visibility: hidden; pointer-events: none; z-index: 0;
+      }
+      .left-panel.mobile-visible, .map-area.mobile-visible, .right-panel.mobile-visible {
+        visibility: visible; pointer-events: auto; z-index: 1;
+      }
+      .right-panel {
+        position: absolute; box-shadow: none; border-left: none;
+        right: auto; top: 0; bottom: auto; transition: none;
+        overflow-y: auto;
+      }
+      header { height: auto; flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+      .stat-num { font-size: 16px; }
+      .stat-label { font-size: 7px; }
+      .logo-icon { width: 22px; height: 22px; font-size: 11px; }
+      .ticker { height: 24px; }
+      .ticker-item { font-size: 8px; padding: 0 16px; }
+      .ticker-label { font-size: 9px; padding: 0 8px; }
+      .status-bar { height: 16px; font-size: 8px; padding: 0 8px; gap: 10px; }
+      .filter-bar { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+      .filter-btn { white-space: nowrap; }
+      .forex-grid { grid-template-columns: 1fr 1fr; }
+      .mobile-nav { display: flex; }
+      .sidebar-toggle { display: none; }
+      .btn-live, .btn-outline { font-size: 8px; padding: 4px 10px; }
+      .thermo-panel { left: 4px; right: 4px; padding: 6px 10px 8px; }
+      .map-filters-panel { min-width: 160px; padding: 10px; }
+      .mfp-sev-pill { padding: 6px 10px; font-size: 10px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <a href="#main-content" class="skip-link">Ir al contenido principal</a>
+
+  <!-- TICKER -->
+  <div class="ticker" role="marquee" aria-live="off" aria-label="Noticias de última hora">
+    <div class="ticker-label">⬤ BREAKING</div>
+    <button class="ticker-pause-btn" aria-label="Pausar ticker" data-action="toggle-ticker">❚❚</button>
+    <div class="ticker-scroll">
+      <div class="ticker-track" id="tickerTrack">
+        <span class="ticker-item high"><span class="dot"></span>Cargando noticias en tiempo real…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-indicator">
+      <div class="status-dot offline" id="wsDot"></div>
+      <span id="wsStatus" style="color:var(--muted);">BACKEND: Desconectado</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot orange" id="gdeltDot"></div>
+      <span style="color:var(--muted);">GDELT</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot orange" id="guardianDot"></div>
+      <span style="color:var(--muted);">Guardian</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot orange" id="rssDot"></div>
+      <span style="color:var(--muted);">RSS ×21</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot orange" id="nitterDot"></div>
+      <span style="color:var(--muted);">Nitter ×17</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot orange" id="marketsDot"></div>
+      <span style="color:var(--muted);">Yahoo Finance</span>
+    </div>
+    <span style="color:var(--border);margin:0 4px;">│</span>
+    <div class="status-indicator">
+      <div class="status-dot orange" id="adsbDot"></div>
+      <span style="color:var(--muted);">ADS-B</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot orange" id="firmsDot"></div>
+      <span style="color:var(--muted);">FIRMS</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot orange" id="iodaDot"></div>
+      <span style="color:var(--muted);">IODA</span>
+    </div>
+    <span style="margin-left:auto; color:var(--muted); display:flex; align-items:center; gap:8px;">
+      Actualiz.: <span id="lastUpdate">—</span>
+      <span class="next-update" id="nextUpdateLabel">— próx.</span>
+    </span>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⬡</div>
+      <h1 style="display:inline;">CONFLICTWATCH</h1>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <div class="stat-num" id="activeCount">—</div>
+        <div class="stat-label">CRÍTICO</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-num orange" id="tensionCount">—</div>
+        <div class="stat-label">TENSIÓN</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-num blue" id="articleCount">—</div>
+        <div class="stat-label">ARTÍCULOS</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-live" aria-label="Forzar actualización en vivo" data-action="force-refresh">⬤ EN VIVO</button>
+      <button class="btn btn-outline" id="btnEsc" aria-label="Filtro: mostrar escaladas" data-action="filter-feed" data-filter="esc">↑
+        ESCALADA</button>
+      <button class="sidebar-toggle" data-action="toggle-sidebar" aria-label="Mostrar panel de datos">DATOS ☰</button>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- LAYOUT -->
+  <main class="layout" id="main-content">
+
+    <!-- LEFT: NEWS FEED -->
+    <div class="left-panel">
+      <div class="panel-header">
+        <span style="color:var(--accent);font-size:11px;">📡</span>
+        <h2 class="panel-title">PULSO EN TIEMPO REAL</h2>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-left:auto;"
+          id="feedTime">--:--</span>
+      </div>
+      <nav class="filter-bar" aria-label="Filtros del feed">
+        <button class="filter-btn active" id="fAll" aria-label="Filtro: mostrar todo" data-action="filter-feed" data-filter="all">TODO</button>
+        <button class="filter-btn" id="fHigh" aria-label="Filtro: solo severidad alta" data-action="filter-feed" data-filter="HIGH">🔴 ALTO</button>
+        <button class="filter-btn" id="fMed" aria-label="Filtro: solo severidad media" data-action="filter-feed" data-filter="MED">🟠 MEDIO</button>
+        <button class="filter-btn" id="fEsc" aria-label="Filtro: solo escaladas" data-action="filter-feed" data-filter="esc">↑ ESCALADA</button>
+        <button class="filter-btn" id="fDesc" aria-label="Filtro: solo desescaladas" data-action="filter-feed" data-filter="desc">↓ DESC.</button>
+      </nav>
+      <div class="feed" id="newsFeed">
+        <div class="skel-news">
+          <div class="skeleton skel-line skel-short"></div>
+          <div class="skeleton skel-line skel-med"></div>
+          <div class="skeleton skel-line"></div>
+        </div>
+        <div class="skel-news">
+          <div class="skeleton skel-line skel-short"></div>
+          <div class="skeleton skel-line skel-med"></div>
+          <div class="skeleton skel-line"></div>
+        </div>
+        <div class="skel-news">
+          <div class="skeleton skel-line skel-short"></div>
+          <div class="skeleton skel-line skel-med"></div>
+          <div class="skeleton skel-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: MAP -->
+    <div class="map-area">
+      <div id="mapContainer"></div>
+
+      <!-- Unified Filters & Layers Panel -->
+      <div class="map-filters-panel" id="mapFiltersPanel">
+        <button class="mfp-header" id="mfpToggle" aria-label="Replegar/desplegar filtros" data-action="toggle-filters-panel">
+          <span class="mfp-title">FILTROS & CAPAS</span>
+          <span class="mfp-chevron" id="mfpChevron">▾</span>
+        </button>
+
+        <div class="mfp-body" id="mfpBody">
+          <!-- Severidad -->
+          <div class="mfp-section">
+            <div class="mfp-section-label">SEVERIDAD DE EVENTOS</div>
+            <div class="mfp-severity-group">
+              <button class="mfp-sev-pill active" aria-label="Mostrar/ocultar eventos de severidad alta" data-action="toggle-layer" data-layer="HIGH">
+                <span class="mfp-dot mfp-dot-red"></span>
+                <span>ALTO</span>
+                <span class="mfp-sev-count" id="hudHigh">—</span>
+              </button>
+              <button class="mfp-sev-pill active" aria-label="Mostrar/ocultar eventos de severidad media" data-action="toggle-layer" data-layer="MED">
+                <span class="mfp-dot mfp-dot-ora"></span>
+                <span>MEDIO</span>
+                <span class="mfp-sev-count" id="hudMed">—</span>
+              </button>
+              <button class="mfp-sev-pill active" aria-label="Mostrar/ocultar eventos de severidad baja" data-action="toggle-layer" data-layer="LOW">
+                <span class="mfp-dot mfp-dot-blu"></span>
+                <span>BAJO</span>
+                <span class="mfp-sev-count" id="hudLow">—</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- OSINT -->
+          <div class="mfp-section">
+            <div class="mfp-section-label">CAPAS OSINT</div>
+            <div class="mfp-osint-group">
+              <button class="osint-btn active" data-action="toggle-osint" data-osint="conflict_zones">
+                <div class="osint-dot" style="background:#FF3B3B;"></div> CONFLICTOS
+                <span class="osint-count" id="osintCountZones">—</span>
+              </button>
+              <button class="osint-btn" data-action="toggle-osint" data-osint="internet_outages">
+                <div class="osint-dot" style="background:#C084FC;"></div> INTERNET
+                <span class="osint-count" id="osintCountIoda">—</span>
+              </button>
+              <button class="osint-btn" data-action="toggle-osint" data-osint="gps_jamming">
+                <div class="osint-dot" style="background:#00E5FF;"></div> GPS JAM.
+                <span class="osint-count" id="osintCountJam">—</span>
+              </button>
+              <button class="osint-btn" data-action="toggle-osint" data-osint="thermal_activity">
+                <div class="osint-dot" style="background:#FF7A00;"></div> TÉRMICAS
+                <span class="osint-count" id="osintCountThermal">—</span>
+              </button>
+              <button class="osint-btn" data-action="toggle-osint" data-osint="military_flights">
+                <div class="osint-dot" style="background:#FFD700;"></div> VUELOS MIL.
+                <span class="osint-count" id="osintCountMil">—</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Vista Limpia -->
+          <button class="mfp-vista-limpia" data-action="vista-limpia">
+            VISTA LIMPIA
+          </button>
+        </div>
+      </div>
+
+      <!-- Hidden eventCount for JS compatibility -->
+      <span id="eventCount" style="display:none;">0</span>
+
+      <!-- ── TERMÓMETRO HORIZONTAL DE TENSIÓN ───────────────────────── -->
+      <div class="thermo-panel" id="thermoPanel">
+        <div class="thermo-header">
+          <span class="thermo-title">ÍNDICE DE TENSIÓN</span>
+          <div class="thermo-right">
+            <span class="thermo-trend" id="thermoTrendBadge" style="color:var(--accent2);">— ESTABLE</span>
+            <span class="thermo-info-btn" id="thermoInfoBtn" role="button" tabindex="0" aria-label="Información del índice de tensión">?</span>
+          </div>
+          <div class="thermo-tooltip" id="thermoTooltip">
+            <strong>CÓMO SE CALCULA</strong>
+            Cada artículo puntúa según severidad: ALTO = 3, MEDIO = 1, BAJO = 0.<br>
+            El peso decae exponencialmente con la antigüedad (vida media = 2 h):<br>
+            inmediato → ×1.0 · 2 h → ×0.5 · 4 h → ×0.25 · 6 h → ×0.125<br>
+            Índice = suma ponderada / máximo posible × 100.<br>
+            0% = todo calma · 100% = todo crítico.
+          </div>
+        </div>
+        <div class="thermo-body">
+          <div class="thermo-tube-wrap">
+            <div class="thermo-tube" id="thermoTube">
+              <div class="thermo-zone-green"></div>
+              <div class="thermo-zone-orange"></div>
+              <div class="thermo-zone-red"></div>
+              <div class="thermo-zone-sep" style="left:40%"></div>
+              <div class="thermo-zone-sep" style="left:70%"></div>
+              <div class="thermo-mercury" id="thermoMercury"></div>
+            </div>
+          </div>
+        </div>
+        <div class="thermo-scale">
+          <span style="left:0%">0</span>
+          <span style="left:40%">40</span>
+          <span style="left:70%">70</span>
+          <span style="left:100%">100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: ANALYTICS -->
+    <aside class="right-panel">
+
+      <!-- CONFLICT COMMODITIES -->
+      <div class="rpanel-section">
+        <h2 class="rpanel-title">
+          <span>🛢 COMMODITIES DE CONFLICTO</span>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <span class="stale-badge" id="mktStale" style="display:none;">DATOS ANTIGUOS</span>
+            <span class="sentiment-tag" id="mktSentiment">—</span>
+          </span>
+        </h2>
+        <div id="marketSignalBadge" style="margin-bottom:6px;"></div>
+        <ul id="commoditiesList" class="commodity-list">
+          <li class="skeleton skel-line" style="margin-bottom:10px;"></li>
+          <li class="skeleton skel-line skel-med" style="margin-bottom:10px;"></li>
+          <li class="skeleton skel-line" style="margin-bottom:10px;"></li>
+        </ul>
+      </div>
+
+      <!-- FOREX -->
+      <div class="rpanel-section">
+        <h2 class="rpanel-title">
+          <span>$ DIVISAS (FOREX)</span>
+          <span style="font-family:var(--mono);font-size:8px;color:var(--muted);" id="mktTime">—</span>
+        </h2>
+        <ul class="forex-grid forex-list" id="forexGrid"></ul>
+      </div>
+
+      <!-- KEYWORDS -->
+      <div class="rpanel-section" style="flex:1;">
+        <h2 class="rpanel-title">
+          <span># TENDENCIAS (6H)</span>
+          <span style="font-family:var(--mono);font-size:8px;color:var(--muted);" id="kwSource">RSS+API</span>
+        </h2>
+        <ol id="keywordsList" class="keywords-list">
+          <li class="skeleton skel-line skel-med" style="margin-bottom:8px;"></li>
+          <li class="skeleton skel-line" style="margin-bottom:8px;"></li>
+          <li class="skeleton skel-line skel-short"></li>
+        </ol>
+      </div>
+
+    </aside>
+    <!-- MOBILE NAV -->
+    <nav class="mobile-nav" aria-label="Navegación móvil">
+      <button class="mobile-nav-btn active" data-action="mobile-tab" data-tab="feed">FEED</button>
+      <button class="mobile-nav-btn" data-action="mobile-tab" data-tab="map">MAPA</button>
+      <button class="mobile-nav-btn" data-action="mobile-tab" data-tab="data">DATOS</button>
+    </nav>
+
+  </main><!-- /layout -->
+
+
+  <!-- Modal de Tendencias -->
+  <div class="modal-overlay" id="trendModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span style="color:var(--accent);">#</span>
+          <span id="modalKeywordTitle">Tendencia</span>
+        </div>
+        <button class="modal-close" aria-label="Cerrar modal" data-action="close-modal">×</button>
+      </div>
+      <div class="modal-body" id="modalKeywordBody">
+        <!-- Contenido dinámico -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ══════════════════════════════════════════════════════════════════════════════
+    // CONFLICTWATCH v3.1 — Frontend
+    // ══════════════════════════════════════════════════════════════════════════════
+
+    // Detecta si el dashboard se sirve desde FastAPI (http/https) o como archivo local
+    const _isHttp = window.location.protocol.startsWith('http');
+    const _host   = _isHttp ? window.location.host : '127.0.0.1:8000';
+    const BACKEND = `${_isHttp ? window.location.protocol : 'http:'}//${_host}`;
+    const WS_URL  = `${_isHttp ? (window.location.protocol === 'https:' ? 'wss:' : 'ws:') : 'ws:'}//${_host}/ws`;
+    const WS_INITIAL_DELAY = 2000;
+    const WS_MAX_DELAY     = 30000;
+    let   _wsRetryDelay    = WS_INITIAL_DELAY;
+
+    // ── State ─────────────────────────────────────────────────────────────────────
+    const state = {
+      feed: [], events: [], keywords: [], ticker: [],
+      markets: { commodities: [], forex: [] },
+      tension: 68, tensionHistory: [],
+      activeCount: 0, tensionCount: 0,
+      filter: 'all',
+      wsConnected: false,
+      source_counts: { gdelt: 0, guardian: 0, rss: 0, nitter: 0 },
+    };
+
+    let ws = null, mapInstance = null, markerLayer = null, pingInt = null;
+
+    // ── Sanitización HTML (prevención XSS) ──────────────────────────────────────
+    function _esc(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function _safeUrl(u) {
+      if (!u) return '';
+      try { const p = new URL(u); return ['http:','https:'].includes(p.protocol) ? u : ''; }
+      catch { return ''; }
+    }
+
+    // ── Static Fallback ───────────────────────────────────────────────────────────
+    const STATIC = {
+      feed: [
+        { id: 1, priority: 'HIGH', title: 'US-Israeli strikes enter day 5 — over 1,000 Iranian casualties', body: 'US and Israeli forces continue joint airstrikes across Iran. Death toll surpasses 1,000, per Iranian state media.', confidence: 90, source: 'AL JAZEERA', flags: ['🇮🇷', '🇮🇱', '🇺🇸'], time: '2h', ts: Math.floor(Date.now()/1000) - 7200, lat: 32.0, lng: 53.0, trend: 'ESCALADA' },
+        { id: 11, priority: 'HIGH', title: 'Pentagon confirms fifth day of joint operations over Iran', body: 'The Pentagon confirmed the fifth consecutive day of joint US-Israeli military operations across Iran.', confidence: 85, source: 'NY TIMES', flags: ['🇮🇷', '🇺🇸'], time: '3h', ts: Math.floor(Date.now()/1000) - 10800, lat: 32.5, lng: 52.0, trend: 'ESCALADA' },
+        { id: 12, priority: 'HIGH', title: 'Iranian state media acknowledges strike damage in Tehran suburbs', body: 'Iran state TV acknowledges significant damage to suburbs of Tehran from continued airstrikes.', confidence: 87, source: 'BBC', flags: ['🇮🇷'], time: '4h', ts: Math.floor(Date.now()/1000) - 14400, lat: 35.7, lng: 51.4, trend: 'ESCALADA' },
+        { id: 2, priority: 'HIGH', title: 'NATO air defenses intercept Iranian ballistic missile over Turkey', body: 'A missile fired from Iran was destroyed over Turkish airspace, Ankara confirms debris recovery.', confidence: 82, source: 'BBC M.EAST', flags: ['🇮🇷', '🇹🇷'], time: '1h', ts: Math.floor(Date.now()/1000) - 3600, lat: 38.9, lng: 35.2, trend: 'ESCALADA' },
+        { id: 13, priority: 'HIGH', title: 'Turkey confirms Iranian missile debris found in eastern province', body: 'Turkish military confirmed recovery of debris from intercepted Iranian missile in eastern Anatolia.', confidence: 78, source: 'REUTERS', flags: ['🇮🇷', '🇹🇷'], time: '2h', ts: Math.floor(Date.now()/1000) - 7200, lat: 39.1, lng: 43.0, trend: 'ESCALADA' },
+        { id: 3, priority: 'HIGH', title: 'US submarine sinks Iranian warship off Sri Lanka coast', body: 'Pentagon confirms first naval engagement of the conflict. 32 sailors rescued, ~100 missing.', confidence: 88, source: 'NY TIMES', flags: ['🇮🇷', '🇺🇸'], time: '3h', ts: Math.floor(Date.now()/1000) - 10800, lat: 7.8, lng: 80.7, trend: 'ESCALADA' },
+        { id: 5, priority: 'MED', title: 'Hezbollah pulls Lebanon into new war launching rockets at Israel', body: 'After Hezbollah attack on northern Israel, IDF strikes 52 killed in Lebanese strikes per officials.', confidence: 79, source: 'BBC M.EAST', flags: ['🇱🇧', '🇮🇱'], time: '4h', ts: Math.floor(Date.now()/1000) - 14400, lat: 33.9, lng: 35.5, trend: 'ESCALADA' },
+        { id: 6, priority: 'LOW', title: 'FIFA grapples with World Cup implications of Iran-US war', body: 'Soccer governing body weighs decisions as tournament host US goes to war with participating nation Iran.', confidence: 60, source: 'NY TIMES', flags: ['🌐'], time: '5h', ts: Math.floor(Date.now()/1000) - 18000, lat: 32.0, lng: 44.0, trend: 'NEUTRAL' },
+      ],
+      keywords: [
+        { rank: 1, name: 'Irán', count: 46, pct: 100, trend: '↑' },
+        { rank: 2, name: 'Israel', count: 21, pct: 45, trend: '↑' },
+        { rank: 3, name: 'Ataque', count: 13, pct: 28, trend: '↑' },
+        { rank: 4, name: 'Misil', count: 5, pct: 11, trend: '↑' },
+        { rank: 5, name: 'Nuclear', count: 4, pct: 9, trend: '→' },
+        { rank: 6, name: 'Hezbollah', count: 3, pct: 7, trend: '→' },
+      ],
+      ticker: [
+        { text: 'US-Israeli strikes enter day 5 — Iranian casualties pass 1,000', priority: 'high', source: 'AL JAZEERA', time: '2h' },
+        { text: 'NATO air defenses intercept Iranian missile over Turkey', priority: 'high', source: 'BBC', time: '1h' },
+        { text: 'US submarine sinks Iranian warship off Sri Lanka — 100 missing', priority: 'high', source: 'NY TIMES', time: '3h' },
+        { text: 'UK and France deploying forces to Middle East region', priority: 'med', source: 'REUTERS', time: '1h' },
+        { text: 'Iran retaliatory strikes hit US military communication infrastructure in Gulf', priority: 'high', source: 'NY TIMES', time: '4h' },
+      ],
+      markets: {
+        commodities: [
+          { name: 'Petróleo Brent', ticker: 'BRENT', price: '80.69', prev_price: '79.02', raw_price: 80.69, raw_prev: 79.02, raw_abs_delta: 1.67, delta: '+2.11%', up: true, spark: [0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8, 1.0, 0.9, 1.0] },
+          { name: 'Petróleo WTI',  ticker: 'WTI',   price: '76.82', prev_price: '75.34', raw_price: 76.82, raw_prev: 75.34, raw_abs_delta: 1.48, delta: '+1.96%', up: true, spark: [0.2, 0.35, 0.4, 0.5, 0.6, 0.65, 0.7, 0.75, 0.85, 0.95, 0.9, 1.0] },
+          { name: 'Oro (oz)',       ticker: 'XAU',   price: '3163.5', prev_price: '3129.3', raw_price: 3163.5, raw_prev: 3129.3, raw_abs_delta: 34.2, delta: '+1.09%', up: true, spark: [0.5, 0.55, 0.6, 0.62, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0] },
+          { name: 'Plata (oz)',     ticker: 'XAG',   price: '34.47',  prev_price: '34.17',  raw_price: 34.47, raw_prev: 34.17, raw_abs_delta: 0.30, delta: '+0.88%', up: true, spark: [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 1.0] },
+          { name: 'Gas Natural',    ticker: 'NG',    price: '4.123',  prev_price: '3.990',  raw_price: 4.123, raw_prev: 3.990, raw_abs_delta: 0.133, delta: '+3.33%', up: true, spark: [0.2, 0.3, 0.35, 0.4, 0.5, 0.6, 0.7, 0.75, 0.85, 0.9, 0.95, 1.0] },
+          { name: 'VIX — Miedo',   ticker: 'VIX',   price: '22.4',   prev_price: '18.9',   raw_price: 22.4,  raw_prev: 18.9,  raw_abs_delta: 3.50, delta: '+18.52%', up: true, spark: [0.1, 0.2, 0.25, 0.3, 0.45, 0.55, 0.65, 0.75, 0.85, 0.9, 0.95, 1.0] },
+          { name: 'Defensa (ETF)', ticker: 'ITA',   price: '142.7',  prev_price: '139.1',  raw_price: 142.7, raw_prev: 139.1, raw_abs_delta: 3.60, delta: '+2.59%', up: true, spark: [0.3, 0.35, 0.4, 0.5, 0.55, 0.65, 0.7, 0.78, 0.85, 0.9, 0.95, 1.0] },
+        ],
+        forex: [
+          { pair: 'EUR/USD', price: '1.1015', delta: '+0.2%', up: true, flat: false },
+          { pair: 'GBP/USD', price: '1.2738', delta: '+0.1%', up: true, flat: false },
+          { pair: 'USD/JPY', price: '150.71', delta: '-0.3%', up: false, flat: false },
+          { pair: 'USD/ILS', price: '3.742', delta: '+1.8%', up: true, flat: false },
+          { pair: 'USD/SAR', price: '3.751', delta: '+0.1%', up: true, flat: false },
+        ],
+        signal: { label: 'MERCADO SINCRONIZADO', cls: 'sync', oil_delta: 2.1, tension: 72 },
+        last_update: Math.floor(Date.now() / 1000),
+      },
+      // Eventos consolidados de ejemplo (fallback sin backend)
+      events: [
+        {
+          id: 1, priority: 'HIGH', headline: 'US-Israeli joint airstrikes on Iran enter day 5',
+          body: 'Sustained bombing campaign across Iranian territory, death toll exceeds 1,000.',
+          sources: ['AL JAZEERA', 'BBC', 'NY TIMES'], reliable_count: 3, verification_pct: 92, confidence_avg: 87,
+          trend: 'ESCALADA', count: 3, ts: Math.floor(Date.now()/1000) - 7200,
+          articles: [
+            { title: 'US-Israeli strikes enter day 5 — over 1,000 Iranian casualties', source: 'AL JAZEERA', time: '2h', priority: 'HIGH', confidence: 90 },
+            { title: 'Pentagon confirms fifth day of joint operations over Iran', source: 'NY TIMES', time: '3h', priority: 'HIGH', confidence: 85 },
+            { title: 'Iranian state media acknowledges strike damage in Tehran suburbs', source: 'BBC', time: '4h', priority: 'HIGH', confidence: 87 },
+          ],
+        },
+        {
+          id: 2, priority: 'HIGH', headline: 'NATO intercepts Iranian ballistic missile over Turkey',
+          body: 'Ankara confirms debris recovery from intercepted ballistic missile.',
+          sources: ['BBC M.EAST', 'REUTERS'], reliable_count: 2, verification_pct: 85, confidence_avg: 80,
+          trend: 'ESCALADA', count: 2, ts: Math.floor(Date.now()/1000) - 3600,
+          articles: [
+            { title: 'NATO air defenses intercept Iranian ballistic missile over Turkey', source: 'BBC M.EAST', time: '1h', priority: 'HIGH', confidence: 82 },
+            { title: 'Turkey confirms Iranian missile debris found in eastern province', source: 'REUTERS', time: '2h', priority: 'HIGH', confidence: 78 },
+          ],
+        },
+      ],
+      tension_history: (() => {
+        const now = Math.floor(Date.now() / 1000);
+        const base = [52, 55, 54, 58, 61, 63, 60, 64, 67, 70, 68, 72, 74, 71, 75, 78, 76, 80, 78, 82, 80, 84, 82, 85];
+        return base.map((v, i) => ({ t: now - (base.length - 1 - i) * 300, v }));
+      })(),
+      layers: {
+        military_flights: [
+          { hex: 'AE1234', lat: 31.5, lon: 35.0, military_type: 'fighter', track: 90, callsign: 'VIPER1', type_code: 'F16', alt: 25000, speed: 450, squawk: '7700', force: 'IAF', country: '🇮🇱' },
+          { hex: 'AE5678', lat: 34.0, lon: 44.0, military_type: 'drone', track: 180, callsign: 'REAPER9', type_code: 'MQ9', alt: 18000, speed: 200, squawk: '1200', force: 'USAF', country: '🇺🇸' },
+          { hex: 'AE9012', lat: 32.5, lon: 51.0, military_type: 'bomber', track: 270, callsign: 'GHOST', type_code: 'B2', alt: 35000, speed: 500, squawk: '0000', force: 'USAF', country: '🇺🇸' },
+        ],
+        internet_outages: [
+          { lat: 35.67, lon: 51.41, country_name: 'Irán', region_name: 'Teherán', severity_pct: 85, datasource: 'bgp', level: 'city' },
+          { lat: 32.66, lon: 51.68, country_name: 'Irán', region_name: 'Isfahán', severity_pct: 60, datasource: 'ping', level: 'region' },
+          { lat: 33.89, lon: 35.50, country_name: 'Líbano', region_name: 'Beirut', severity_pct: 95, datasource: 'bgp', level: 'country' }
+        ],
+        conflict_zones: [
+          { lat: 32.0, lon: 34.8, radius_km: 40, status: 'combate_activo', status_label: 'INTERCAMBIO DE FUEGO', name: 'Frontera Norte Israel/Líbano', scenario: 'Ataques con cohetes y represalias aéreas', ew_detected: true, ew_max_ratio: 0.85, ew_affected_aircraft: 12, hotspot_count: 8, total_frp_mw: 240, participants: [{flag: '🇮🇱', name: 'IDF', role: 'Defensa/Ataque', forces: 'Cúpula de Hierro, IAF'}, {flag: '🇱🇧', name: 'Hezbollah', role: 'Ataque', forces: 'Artillería de misiles'}] },
+          { lat: 33.73, lon: 51.73, radius_km: 30, status: 'tension_alta', status_label: 'ZONA RESTRINGIDA', name: 'Complejo Nuclear Natanz', scenario: 'Defensas aéreas en máxima alerta', ew_detected: true, ew_max_ratio: 0.95, ew_affected_aircraft: 4, hotspot_count: 0, total_frp_mw: 0, participants: [{flag: '🇮🇷', name: 'IRGC', role: 'Defensa Antiaérea', forces: 'S-300, Bavar-373'}] }
+        ],
+        gps_jamming: [
+          { lat: 31.8, lon: 34.5, grid_size: 1.5, severity: 'high', ratio: 0.9, degraded_count: 45, total_count: 50 },
+          { lat: 33.5, lon: 51.5, grid_size: 2, severity: 'medium', ratio: 0.6, degraded_count: 12, total_count: 20 },
+          { lat: 25.1, lon: 51.3, grid_size: 1.5, severity: 'low', ratio: 0.3, degraded_count: 5, total_count: 15 }
+        ],
+        independent_hotspots: [
+          { lat: 34.09, lon: 49.20, frp: 150, nearest_zone: 'Arak', nearest_dist_km: 2, daynight: 'N', acq_date: 'HOY', acq_time: '18:30' },
+          { lat: 33.34, lon: 44.40, frp: 85, nearest_zone: 'Bagdad', nearest_dist_km: 15, daynight: 'N', acq_date: 'HOY', acq_time: '19:15' }
+        ]
+      }
+    };
+
+    // ── Clock ─────────────────────────────────────────────────────────────────────
+    function updateClock() {
+      const n = new Date();
+      document.getElementById('clock').textContent = n.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('feedTime').textContent = n.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    }
+    // Reloj gestionado desde boot() junto con el countdown
+
+    // ── MAP ───────────────────────────────────────────────────────────────────────
+    const CITIES = [
+      // Capitales
+      { name: 'Teherán', lat: 35.67, lng: 51.41, type: 'capital', country: '🇮🇷' },
+      { name: 'Tel Aviv', lat: 32.08, lng: 34.78, type: 'capital', country: '🇮🇱' },
+      { name: 'Beirut', lat: 33.89, lng: 35.50, type: 'capital', country: '🇱🇧' },
+      { name: 'Bagdad', lat: 33.34, lng: 44.40, type: 'capital', country: '🇮🇶' },
+      { name: 'Damasco', lat: 33.51, lng: 36.29, type: 'capital', country: '🇸🇾' },
+      { name: 'Riad', lat: 24.69, lng: 46.72, type: 'capital', country: '🇸🇦' },
+      { name: 'Amán', lat: 31.95, lng: 35.93, type: 'city', country: '🇯🇴' },
+      { name: 'Kuwait City', lat: 29.37, lng: 47.97, type: 'city', country: '🇰🇼' },
+      { name: 'Abu Dabi', lat: 24.46, lng: 54.37, type: 'city', country: '🇦🇪' },
+      { name: 'Doha', lat: 25.28, lng: 51.53, type: 'city', country: '🇶🇦' },
+      // Instalaciones nucleares
+      { name: 'Natanz ☢', lat: 33.73, lng: 51.73, type: 'hotspot', country: '☢️' },
+      { name: 'Fordow ☢', lat: 34.88, lng: 50.57, type: 'hotspot', country: '☢️' },
+      { name: 'Arak (reactor)', lat: 34.09, lng: 49.20, type: 'hotspot', country: '☢️' },
+      { name: 'Isfahan (nuc.)', lat: 32.66, lng: 51.68, type: 'hotspot', country: '🇮🇷' },
+      // Chokepoints estratégicos
+      { name: 'Estrecho Ormuz', lat: 26.50, lng: 56.88, type: 'chokepoint', country: '⚓' },
+      { name: 'Canal de Suez', lat: 30.57, lng: 32.26, type: 'chokepoint', country: '⚓' },
+      { name: 'Bab-el-Mandeb', lat: 12.60, lng: 43.35, type: 'chokepoint', country: '⚓' },
+      // Bases militares y puertos clave
+      { name: 'Bandar Abbas', lat: 27.18, lng: 56.27, type: 'port', country: '🇮🇷' },
+      { name: 'Haifa (naval)', lat: 32.81, lng: 34.98, type: 'port', country: '🇮🇱' },
+      { name: 'Al-Udeid (EEUU)', lat: 25.11, lng: 51.31, type: 'base', country: '🇺🇸' },
+      { name: 'Al-Asad (EEUU)', lat: 33.78, lng: 42.44, type: 'base', country: '🇺🇸' },
+    ];
+
+    // Capas separadas por prioridad (para poder toggle cada una)
+    let cityLayer = null;
+    let clusterLayers = { HIGH: null, MED: null, LOW: null };
+    let layerVisible = { HIGH: true, MED: true, LOW: true };
+    // Mapa artículo-ID → marker (para bidireccionalidad)
+    const articleMarkerMap = {};
+
+    function initMap() {
+      mapInstance = L.map('mapContainer', {
+        center: [31, 44],
+        zoom: 5,
+        zoomControl: true,
+        attributionControl: false,
+        minZoom: 3,
+        maxZoom: 12,
+      });
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19, subdomains: 'abcd',
+      }).addTo(mapInstance);
+
+      // Capa de ciudades fijas (separada de los eventos)
+      cityLayer = L.layerGroup().addTo(mapInstance);
+
+      const cityColors = {
+        hotspot: '#FF3B3B', port: '#00B4FF', base: '#FFD700',
+        chokepoint: '#C084FC', capital: '#4A5268', city: '#2A3245',
+      };
+
+      CITIES.forEach(c => {
+        const color = cityColors[c.type] || '#4A5268';
+        const size = c.type === 'capital' ? 6 : c.type === 'hotspot' ? 5 : 4;
+        const labelOpacity = c.type === 'hotspot' ? 0.45 : c.type === 'capital' ? 0.3 : 0.2;
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="position:relative;">
+              <div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;
+                border:1px solid ${color}44;box-shadow:0 0 ${size}px ${color}44;"></div>
+              <div style="position:absolute;left:${size + 3}px;top:50%;transform:translateY(-50%);
+                font-family:'Space Mono',monospace;font-size:6px;color:rgba(232,234,240,${labelOpacity});
+                white-space:nowrap;pointer-events:none;">${c.country} ${c.name}</div>
+            </div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        });
+        L.marker([c.lat, c.lng], { icon, interactive: false }).addTo(cityLayer);
+      });
+
+      // Inicializar capas de eventos por prioridad (con clustering)
+      ['HIGH', 'MED', 'LOW'].forEach(p => {
+        clusterLayers[p] = L.markerClusterGroup({
+          showCoverageOnHover: false,
+          maxClusterRadius: 45,
+          iconCreateFunction: (cluster) => {
+            const col = p === 'HIGH' ? '#FF3B3B' : p === 'MED' ? '#FF7A00' : '#00B4FF';
+            const label = p === 'HIGH' ? '!' : p === 'MED' ? '▲' : '';
+            const count = cluster.getChildCount();
+            return L.divIcon({
+              html: `<div style="background:${col};border:2px solid ${col}CC;border-radius:50%;
+                width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+                font-family:'Space Mono',monospace;font-size:10px;color:#fff;font-weight:700;
+                box-shadow:0 0 12px ${col}88,0 2px 6px rgba(0,0,0,0.5);">
+                ${count}</div>`,
+              className: '', iconSize: [30, 30], iconAnchor: [15, 15],
+            });
+          },
+        }).addTo(mapInstance);
+      });
+
+      // Inicializar capas OSINT
+      initOsintLayers();
+    }
+
+    function toggleLayer(priority, btn) {
+      layerVisible[priority] = !layerVisible[priority];
+      btn.classList.toggle('active', layerVisible[priority]);
+      if (layerVisible[priority]) {
+        mapInstance.addLayer(clusterLayers[priority]);
+      } else {
+        mapInstance.removeLayer(clusterLayers[priority]);
+      }
+    }
+
+    // ── OSINT Layers ──────────────────────────────────────────────────────────
+    const osintLayers = {};
+    const militaryMarkerMap = {};  // hex → L.marker (actualización incremental)
+    const osintVisible = {
+      conflict_zones: true,
+      internet_outages: false,
+      gps_jamming: false,
+      thermal_activity: false,
+      military_flights: false,
+    };
+
+    function initOsintLayers() {
+      osintLayers.conflict_zones = L.layerGroup().addTo(mapInstance);
+      osintLayers.internet_outages = L.layerGroup();
+      osintLayers.gps_jamming = L.layerGroup();
+      osintLayers.thermal_activity = L.layerGroup();
+      osintLayers.military_flights = L.layerGroup();
+    }
+
+    function toggleOsintLayer(layerName, btn) {
+      osintVisible[layerName] = !osintVisible[layerName];
+      btn.classList.toggle('active', osintVisible[layerName]);
+      if (osintVisible[layerName]) {
+        mapInstance.addLayer(osintLayers[layerName]);
+      } else {
+        mapInstance.removeLayer(osintLayers[layerName]);
+      }
+    }
+
+    // Vista limpia: desactiva/activa todas las capas OSINT de golpe
+    function toggleVistaLimpia(btn) {
+      const anyOn = Object.entries(osintVisible).some(([k, v]) => v);
+      const newState = !anyOn;
+      Object.keys(osintVisible).forEach(k => {
+        osintVisible[k] = newState;
+        if (newState) {
+          mapInstance.addLayer(osintLayers[k]);
+        } else {
+          mapInstance.removeLayer(osintLayers[k]);
+        }
+      });
+      // Sync all osint buttons
+      document.querySelectorAll('.osint-btn[data-osint]').forEach(b => {
+        b.classList.toggle('active', newState);
+      });
+      btn.classList.toggle('active', !newState);
+    }
+
+    /* ── Aircraft icon helpers ── */
+    function _aircraftColor(milType) {
+      const colors = {
+        fighter: '#FFD700', bomber: '#FF4444', cargo: '#88AAFF', tanker: '#88AAFF',
+        awacs: '#FF00FF', recon: '#00FFAA', heli: '#FFAA00', uav: '#FF7A00',
+      };
+      return colors[milType] || '#AAAAAA';
+    }
+    function _aircraftSvg(milType, color) {
+      const paths = {
+        fighter: '<path d="M12 2l-2 6-6 4v2l6-2v6l-3 2v2l5-2 5 2v-2l-3-2v-6l6 2v-2l-6-4z"/>',
+        bomber: '<path d="M12 1l-2 6-8 6v2l8-3v7l-3 2v2l5-3 5 3v-2l-3-2v-7l8 3v-2l-8-6z"/>',
+        cargo: '<path d="M12 2l-1 4-8 4v2l8-2v8l-4 2v2l5-2 5 2v-2l-4-2v-8l8 2v-2l-8-4z"/>',
+        tanker: '<path d="M12 2l-1 4-8 4v2l8-2v8l-4 2v2l5-2 5 2v-2l-4-2v-8l8 2v-2l-8-4z"/>',
+        awacs: '<path d="M12 2l-1 4-8 4v2l8-2v8l-4 2v2l5-2 5 2v-2l-4-2v-8l8 2v-2l-8-4z"/><circle cx="12" cy="10" r="3" fill="none" stroke="' + color + '" stroke-width="1.2"/>',
+        heli: '<path d="M12 5v2l-3 2v8l-2 2v1h2l3 2 3-2h2v-1l-2-2V9l-3-2z"/><line x1="4" y1="6" x2="20" y2="6" stroke="' + color + '" stroke-width="1.5"/>',
+        uav: '<path d="M12 2l-1 6-8 3v2l8-2v8l-3 2v1l4-1 4 1v-1l-3-2v-8l8 2v-2l-8-3z"/>',
+        recon: '<path d="M12 2l-2 6-6 4v2l6-2v6l-3 2v2l5-2 5 2v-2l-3-2v-6l6 2v-2l-6-4z"/>',
+      };
+      const inner = paths[milType] || paths.fighter;
+      return `<svg width="18" height="18" viewBox="0 0 24 24" fill="${color}" style="filter:drop-shadow(0 0 5px ${color}88);">${inner}</svg>`;
+    }
+
+    /* ── Traducciones para popups OSINT ── */
+    const _INTENSITY_ES = { CRITICAL: 'CRÍTICO', HIGH: 'ALTO', MED: 'MEDIO', LOW: 'BAJO' };
+    const _SEVERITY_ES  = { high: 'ALTA', medium: 'MEDIA', low: 'BAJA' };
+    const _MILTYPE_ES   = {
+      fighter: 'CAZA', bomber: 'BOMBARDERO', cargo: 'TRANSPORTE', tanker: 'CISTERNA',
+      awacs: 'ALERTA TEMPRANA', recon: 'RECONOCIMIENTO', heli: 'HELICÓPTERO', uav: 'DRON (UAV)', military: 'MILITAR',
+    };
+    const _DATASOURCE_ES = { bgp: 'Protocolo BGP', 'ping-slash24': 'Sondeo Ping /24' };
+    const _LEVEL_ES      = { country: 'País', region: 'Región', asn: 'Proveedor (ASN)' };
+
+    function updateOsintLayers(layers) {
+      if (!mapInstance || !osintLayers.military_flights) return;
+
+      // ── Vuelos militares (ADS-B) — actualización incremental ──
+      if (layers.military_flights) {
+        const currentHexes = new Set();
+
+        layers.military_flights.forEach(f => {
+          if (!f.hex) return;
+          currentHexes.add(f.hex);
+
+          const color = _aircraftColor(f.military_type);
+          const rotation = f.track || 0;
+          const milLabel = _MILTYPE_ES[f.military_type] || f.military_type.toUpperCase();
+          const iconHtml = `<div style="transform:rotate(${rotation}deg);width:22px;height:22px;display:flex;align-items:center;justify-content:center;">
+            ${_aircraftSvg(f.military_type, color)}
+          </div>`;
+          const popupHtml = `<div style="min-width:200px;font-family:'Space Mono',monospace;font-size:10px;">
+            <div style="color:${color};font-size:8px;letter-spacing:1px;margin-bottom:6px;border-bottom:1px solid #2a2e3a;padding-bottom:4px;">
+              ✈ ${milLabel} · ${_esc(f.country)}
+            </div>
+            <div style="font-size:12px;font-weight:700;color:#E8EAF0;margin-bottom:6px;">${_esc(f.callsign)}</div>
+            <div style="color:#9AA0B0;line-height:1.7;">
+              ${f.type_code ? '▸ Aeronave: <span style="color:#E8EAF0;">' + _esc(f.type_code) + '</span><br>' : ''}
+              ▸ Altitud: <span style="color:#E8EAF0;">${f.alt || '?'} ft</span> · Velocidad: <span style="color:#E8EAF0;">${f.speed || '?'} kt</span><br>
+              ▸ Rumbo: <span style="color:#E8EAF0;">${f.track || '?'}°</span> · Squawk: <span style="color:#E8EAF0;">${f.squawk || '—'}</span>
+              ${f.force ? '<br>▸ Fuerza aérea: <span style="color:' + color + ';">' + _esc(f.force) + '</span>' : ''}
+            </div>
+            <div style="margin-top:6px;font-size:7px;color:#5A6278;border-top:1px solid #1E2535;padding-top:4px;">Fuente: ADS-B Exchange (adsb.lol)</div>
+          </div>`;
+
+          if (militaryMarkerMap[f.hex]) {
+            // Actualizar marcador existente (sin parpadeo)
+            const m = militaryMarkerMap[f.hex];
+            m.setLatLng([f.lat, f.lon]);
+            m.setIcon(L.divIcon({ className: '', html: iconHtml, iconSize: [22, 22], iconAnchor: [11, 11] }));
+            m.setPopupContent(popupHtml);
+          } else {
+            // Crear marcador nuevo
+            const icon = L.divIcon({ className: '', html: iconHtml, iconSize: [22, 22], iconAnchor: [11, 11] });
+            const marker = L.marker([f.lat, f.lon], { icon }).bindPopup(popupHtml);
+            militaryMarkerMap[f.hex] = marker;
+            osintLayers.military_flights.addLayer(marker);
+          }
+        });
+
+        // Eliminar solo aviones que el backend ya expiró (TTL)
+        Object.keys(militaryMarkerMap).forEach(hex => {
+          if (!currentHexes.has(hex)) {
+            osintLayers.military_flights.removeLayer(militaryMarkerMap[hex]);
+            delete militaryMarkerMap[hex];
+          }
+        });
+
+        _updateOsintCount('osintCountMil', layers.military_flights.length);
+      }
+
+      // ── Cortes de internet (IODA) ──
+      if (layers.internet_outages) {
+        osintLayers.internet_outages.clearLayers();
+        const byCountry = {};
+        layers.internet_outages.forEach(o => {
+          const key = `${o.country_name}_${o.lat.toFixed(1)}_${o.lon.toFixed(1)}`;
+          if (!byCountry[key] || o.severity_pct > byCountry[key].severity_pct) {
+            byCountry[key] = { ...o, regions: [o.region_name] };
+          } else {
+            byCountry[key].regions.push(o.region_name);
+          }
+        });
+        Object.values(byCountry).forEach(o => {
+          const isCountry = o.level === 'country';
+          const radiusKm = isCountry ? 200 : 80;
+          const fillOp = 0.05 + (o.severity_pct / 100) * 0.25;
+          const pulseClass = o.severity_pct > 50 ? 'ioda-label-pulse' : '';
+          const levelLabel = _LEVEL_ES[o.level] || o.level;
+          const dsLabel = _DATASOURCE_ES[o.datasource] || o.datasource;
+          const regionDisplay = (o.regions || [o.region_name]).map(r => _esc(r)).join(', ');
+          const circle = L.circle([o.lat, o.lon], {
+            radius: radiusKm * 1000,
+            fillColor: '#C084FC',
+            fillOpacity: fillOp,
+            color: '#C084FC',
+            weight: 1.5,
+            dashArray: '8,4',
+          }).bindPopup(`<div style="font-family:'Space Mono',monospace;font-size:10px;min-width:220px;">
+            <div style="color:#C084FC;font-size:8px;letter-spacing:1px;margin-bottom:6px;border-bottom:1px solid #2a2e3a;padding-bottom:4px;">🌐 CORTE DE INTERNET DETECTADO</div>
+            <div style="color:#E8EAF0;line-height:1.7;">
+              <div style="font-size:10px;margin-bottom:4px;">📍 ${regionDisplay}, <span style="font-weight:700;">${_esc(o.country_name)}</span></div>
+              <div style="margin-bottom:6px;"><span style="font-size:18px;font-weight:700;color:#C084FC;">${o.severity_pct}%</span> <span style="font-size:10px;">de pérdida de tráfico</span></div>
+              <span style="color:#9AA0B0;">▸ Método: ${dsLabel}</span><br>
+              <span style="color:#9AA0B0;">▸ Nivel: ${levelLabel}</span>
+            </div>
+            <div style="margin-top:6px;font-size:7px;color:#5A6278;border-top:1px solid #1E2535;padding-top:4px;">IODA — Georgia Tech / CAIDA</div>
+          </div>`);
+          osintLayers.internet_outages.addLayer(circle);
+          const label = L.marker([o.lat, o.lon], {
+            icon: L.divIcon({
+              className: '',
+              html: `<div class="${pulseClass}" style="text-align:center;white-space:nowrap;color:#C084FC;
+                font-family:'Space Mono',monospace;font-weight:700;font-size:13px;
+                text-shadow:0 0 8px #000,0 0 16px #000;">
+                ${o.severity_pct}%
+                <div style="font-size:8px;color:#C084FC88;font-weight:400;">${_esc(o.region_name || o.country_name)}</div>
+              </div>`,
+              iconSize: [90, 36],
+              iconAnchor: [45, 18],
+            }),
+            interactive: false,
+          });
+          osintLayers.internet_outages.addLayer(label);
+        });
+        _updateOsintCount('osintCountIoda', layers.internet_outages.length);
+      }
+
+      // ── Zonas de conflicto activo ──
+      if (layers.conflict_zones && osintLayers.conflict_zones) {
+        osintLayers.conflict_zones.clearLayers();
+        layers.conflict_zones.forEach(z => {
+          const color = z.color || '#FF3B3B';
+          const fillOp = z.status === 'combate_activo' ? 0.04 : 0.02;
+          const circle = L.circle([z.lat, z.lon], {
+            radius: z.radius_km * 1000,
+            fillColor: color,
+            fillOpacity: fillOp,
+            color: color,
+            weight: z.ew_detected ? 1.5 : 0.8,
+            dashArray: '6,6',
+            opacity: 0.5,
+          }).bindPopup(`<div style="font-family:'Space Mono',monospace;font-size:10px;min-width:240px;">
+            <div style="color:${color};font-size:9px;letter-spacing:1px;margin-bottom:6px;font-weight:700;border-bottom:1px solid #2a2e3a;padding-bottom:4px;">
+              ⚔ ${_esc(z.status_label)}
+            </div>
+            <div style="color:#E8EAF0;font-size:13px;font-weight:700;margin-bottom:4px;">${_esc(z.name)}</div>
+            <div style="color:#9AA0B0;font-size:9px;margin-bottom:8px;line-height:1.5;font-style:italic;">${_esc(z.scenario)}</div>
+            <div style="border-top:1px solid #2a2e3a;padding-top:6px;">
+              <div style="font-size:7px;color:#5A6278;letter-spacing:1px;margin-bottom:4px;">FUERZAS IMPLICADAS</div>
+              ${z.participants.map(p => `
+                <div style="margin-bottom:5px;padding-left:2px;">
+                  <span style="font-size:12px;">${p.flag}</span>
+                  <span style="color:#E8EAF0;font-weight:700;font-size:9px;">${_esc(p.name)}</span>
+                  <span style="color:#6f7994;font-size:8px;"> — ${_esc(p.role)}</span>
+                  <div style="color:#6f7994;font-size:8px;padding-left:20px;">⚙ ${_esc(p.forces)}</div>
+                </div>
+              `).join('')}
+            </div>
+            ${z.ew_detected ? `<div style="border-top:1px solid #2a2e3a;padding-top:5px;margin-top:5px;">
+              <div style="color:#00E5FF;font-size:8px;font-weight:700;letter-spacing:0.5px;">⚡ GUERRA ELECTRÓNICA</div>
+              <div style="color:#E8EAF0;font-size:10px;margin-top:2px;line-height:1.5;">
+                <span style="font-weight:700;color:#00E5FF;">${Math.round(z.ew_max_ratio * 100)}%</span>
+                <span style="font-size:9px;color:#9AA0B0;"> señales GPS degradadas · ${z.ew_affected_aircraft} aeronaves</span>
+              </div>
+            </div>` : ''}
+            ${z.hotspot_count > 0 ? `<div style="border-top:1px solid #2a2e3a;padding-top:5px;margin-top:5px;">
+              <div style="color:#FF7A00;font-size:8px;font-weight:700;">🔥 ${z.hotspot_count} anomalías térmicas · ${z.total_frp_mw} MW</div>
+              <div style="color:#9AA0B0;font-size:8px;margin-top:2px;">
+                ${z.total_frp_mw > 100 ? 'Probable bombardeo o artillería' :
+                  z.total_frp_mw > 20 ? 'Actividad térmica significativa' :
+                  'Actividad térmica menor'}
+              </div>
+            </div>` : ''}
+          </div>`);
+          osintLayers.conflict_zones.addLayer(circle);
+          const statusIcon = z.status === 'combate_activo' ? '⚔' : '⚠';
+          const label = L.marker([z.lat, z.lon], {
+            icon: L.divIcon({
+              className: '',
+              html: `<div style="text-align:center;white-space:nowrap;color:${color};
+                font-family:'Space Mono',monospace;font-weight:600;font-size:8px;
+                text-shadow:0 0 6px #000,0 0 12px #000;pointer-events:none;opacity:0.7;">
+                ${statusIcon} ${_esc(z.name)}
+              </div>`,
+              iconSize: [140, 16],
+              iconAnchor: [70, 8],
+            }),
+            interactive: false,
+          });
+          osintLayers.conflict_zones.addLayer(label);
+        });
+        _updateOsintCount('osintCountZones', layers.conflict_zones.length);
+      }
+
+      // ── GPS Jamming — zonas circulares estilo IODA ──
+      if (layers.gps_jamming && osintLayers.gps_jamming) {
+        osintLayers.gps_jamming.clearLayers();
+        layers.gps_jamming.forEach(z => {
+          const sevColor = z.severity === 'high' ? '#00E5FF' : z.severity === 'medium' ? '#00B8D4' : '#0097A7';
+          const fillOp = z.severity === 'high' ? 0.15 : z.severity === 'medium' ? 0.10 : 0.06;
+          const radiusKm = z.grid_size * 55;
+          const centerLat = z.lat + z.grid_size / 2;
+          const centerLon = z.lon + z.grid_size / 2;
+          const pct = Math.round(z.ratio * 100);
+          const circle = L.circle([centerLat, centerLon], {
+            radius: radiusKm * 1000,
+            fillColor: sevColor,
+            fillOpacity: fillOp,
+            color: sevColor,
+            weight: 1.2,
+            dashArray: '6,4',
+            opacity: 0.6,
+          }).bindPopup(`<div style="font-family:'Space Mono',monospace;font-size:10px;min-width:210px;">
+            <div style="color:#00E5FF;font-size:8px;letter-spacing:1px;margin-bottom:6px;font-weight:700;border-bottom:1px solid #2a2e3a;padding-bottom:4px;">
+              ⚡ INTERFERENCIA GPS DETECTADA
+            </div>
+            <div style="color:#E8EAF0;line-height:1.7;">
+              <div style="margin-bottom:4px;">
+                <span style="font-size:18px;font-weight:700;color:#00E5FF;">${pct}%</span>
+                <span style="font-size:10px;"> de señales degradadas</span>
+              </div>
+              <span style="color:#9AA0B0;">▸ ${z.degraded_count} de ${z.total_count} aeronaves afectadas</span><br>
+              <span style="color:#9AA0B0;">▸ Posible jamming o spoofing GPS</span>
+            </div>
+            <div style="margin-top:6px;font-size:7px;color:#5A6278;border-top:1px solid #1E2535;padding-top:4px;">ADS-B Exchange · Análisis NACp</div>
+          </div>`);
+          osintLayers.gps_jamming.addLayer(circle);
+          const label = L.marker([centerLat, centerLon], {
+            icon: L.divIcon({
+              className: '',
+              html: `<div style="text-align:center;white-space:nowrap;color:#00E5FF;
+                font-family:'Space Mono',monospace;font-weight:700;font-size:11px;
+                text-shadow:0 0 8px #000,0 0 16px #000;pointer-events:none;">
+                ${pct}%
+                <div style="font-size:7px;color:#00E5FF88;font-weight:400;">GPS JAM</div>
+              </div>`,
+              iconSize: [60, 28],
+              iconAnchor: [30, 14],
+            }),
+            interactive: false,
+          });
+          osintLayers.gps_jamming.addLayer(label);
+        });
+        _updateOsintCount('osintCountJam', layers.gps_jamming.length);
+      }
+
+      // ── Actividad térmica — hotspots independientes como zonas circulares ──
+      if (layers.independent_hotspots && osintLayers.thermal_activity) {
+        osintLayers.thermal_activity.clearLayers();
+        layers.independent_hotspots.forEach(f => {
+          const color = f.frp >= 100 ? '#FF3B3B' : '#FF7A00';
+          const fillOp = f.frp >= 100 ? 0.14 : 0.08;
+          const radiusKm = f.frp >= 100 ? 25 : 15;
+          const circle = L.circle([f.lat, f.lon], {
+            radius: radiusKm * 1000,
+            fillColor: color,
+            fillOpacity: fillOp,
+            color: color,
+            weight: 1,
+            dashArray: '5,4',
+            opacity: 0.5,
+          }).bindPopup(`<div style="font-family:'Space Mono',monospace;font-size:10px;min-width:210px;">
+            <div style="color:${color};font-size:8px;letter-spacing:1px;margin-bottom:6px;font-weight:700;border-bottom:1px solid #2a2e3a;padding-bottom:4px;">
+              🔥 ACTIVIDAD TÉRMICA INTENSA
+            </div>
+            <div style="color:#E8EAF0;line-height:1.7;">
+              <div style="margin-bottom:4px;">
+                <span style="font-size:18px;font-weight:700;color:${color};">${f.frp} MW</span>
+                <span style="font-size:10px;"> potencia radiativa</span>
+              </div>
+              <span style="color:#9AA0B0;">▸ Zona más cercana: ${_esc(f.nearest_zone)} (${f.nearest_dist_km} km)</span><br>
+              <span style="color:#9AA0B0;">▸ ${f.daynight === 'D' ? '☀ Día' : '🌙 Noche'} · ${_esc(f.acq_date)} ${_esc(f.acq_time)} UTC</span>
+            </div>
+            <div style="margin-top:6px;font-size:7px;color:#FF7A0088;border-top:1px solid #1E2535;padding-top:4px;">⚠ Fuera de zona de conflicto conocida</div>
+            <div style="font-size:7px;color:#5A6278;">NASA FIRMS · NOAA-20 VIIRS</div>
+          </div>`);
+          osintLayers.thermal_activity.addLayer(circle);
+          const label = L.marker([f.lat, f.lon], {
+            icon: L.divIcon({
+              className: '',
+              html: `<div style="text-align:center;white-space:nowrap;color:${color};
+                font-family:'Space Mono',monospace;font-weight:700;font-size:10px;
+                text-shadow:0 0 8px #000,0 0 16px #000;pointer-events:none;">
+                ${f.frp} MW
+              </div>`,
+              iconSize: [60, 16],
+              iconAnchor: [30, 8],
+            }),
+            interactive: false,
+          });
+          osintLayers.thermal_activity.addLayer(label);
+        });
+        _updateOsintCount('osintCountThermal', layers.independent_hotspots.length);
+      }
+
+    }
+
+    function _updateOsintCount(elId, count) {
+      const el = document.getElementById(elId);
+      if (el) el.textContent = count > 0 ? count : '—';
+    }
+
+    function updateOsintHealth(health) {
+      const dotMap = { adsb: 'adsbDot', firms: 'firmsDot', ioda: 'iodaDot' };
+      Object.entries(dotMap).forEach(([key, dotId]) => {
+        const dot = document.getElementById(dotId);
+        if (!dot || !health[key]) return;
+        const s = health[key];
+        if (s === 'ok')     dot.className = 'status-dot';
+        else if (s === 'alerta') dot.className = 'status-dot orange';
+        else if (s === 'error')  dot.className = 'status-dot offline';
+        else                     dot.className = 'status-dot orange';
+      });
+    }
+
+    function flyToArticle(artId) {
+      const info = articleMarkerMap[artId];
+      if (!info || !mapInstance) return;
+      mapInstance.flyTo([info.lat, info.lng], 7, { animate: true, duration: 1.2 });
+      setTimeout(() => info.marker.openPopup(), 1300);
+    }
+
+    // Jitter de coordenadas: distribuye artículos con las mismas coords en un radio de ~40 km
+    // para evitar que decenas de noticias se apilen en el mismo punto del mapa.
+    const _coordCount = {};
+    function _jittered(lat, lng) {
+      const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+      _coordCount[key] = (_coordCount[key] || 0) + 1;
+      const n = _coordCount[key];
+      if (n === 1) return [lat, lng];
+      // Espiral de Fibonacci para distribuirlos uniformemente
+      const angle = n * 2.399963; // ángulo de oro en radianes
+      const r = 0.35 * Math.sqrt(n - 1); // radio ~40 km máximo
+      return [lat + r * Math.sin(angle), lng + r * Math.cos(angle)];
+    }
+
+    function updateMapMarkers(articles) {
+      // Reiniciar jitter en cada actualización
+      Object.keys(_coordCount).forEach(k => delete _coordCount[k]);
+      ['HIGH', 'MED', 'LOW'].forEach(p => clusterLayers[p] && clusterLayers[p].clearLayers());
+      Object.keys(articleMarkerMap).forEach(k => delete articleMarkerMap[k]);
+
+      const colors = { HIGH: '#FF3B3B', MED: '#FF7A00', LOW: '#00B4FF' };
+      let counts = { HIGH: 0, MED: 0, LOW: 0 };
+      let mapped = 0;
+
+      articles.forEach(art => {
+        if (!art.lat || !art.lng) return;
+        const p = art.priority || 'LOW';
+        const col = colors[p] || '#00B4FF';
+        const size = p === 'HIGH' ? 14 : p === 'MED' ? 11 : 8;
+        const isHigh = p === 'HIGH';
+        counts[p] = (counts[p] || 0) + 1;
+
+        // Aplicar jitter para no apilar marcadores
+        const [jLat, jLng] = _jittered(art.lat, art.lng);
+
+        // Icono con borde blanco para distinguir de OSINT
+        const icon = L.divIcon({
+          className: isHigh ? 'marker-pulse' : '',
+          html: `<div style="width:${size}px;height:${size}px;background:${col};border-radius:50%;
+            box-shadow:0 0 ${size * 2}px ${col}AA;border:2px solid rgba(255,255,255,0.6);cursor:pointer;"></div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        });
+
+        const marker = L.marker([jLat, jLng], { icon })
+          .bindPopup(`
+            <div style="min-width:220px;padding:2px;">
+              <div style="color:${col};font-size:8px;letter-spacing:1px;margin-bottom:6px;
+                font-family:'Space Mono',monospace;">
+                ${p} · ${_esc(art.source)} · ${_esc(art.time)}
+              </div>
+              <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:600;
+                line-height:1.4;color:#E8EAF0;">${_esc(art.title)}</div>
+              ${art.body ? `<div style="font-size:10px;color:#6A7390;margin-top:6px;
+                line-height:1.5;">${_esc(art.body)}</div>` : ''}
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+                <div style="font-size:12px;">${(art.flags || []).join(' ')}</div>
+                ${art.url ? `<a href="${_safeUrl(art.url)}" target="_blank" style="font-family:'Space Mono',monospace;
+                  font-size:8px;color:${col};text-decoration:none;letter-spacing:0.5px;">VER FUENTE →</a>` : ''}
+              </div>
+            </div>`);
+
+        // Click en marcador → resaltar noticia en el feed
+        marker.on('popupopen', () => highlightFeedItem(art.id));
+
+        clusterLayers[p].addLayer(marker);
+        articleMarkerMap[art.id] = { lat: jLat, lng: jLng, marker };
+        mapped++;
+      });
+
+      document.getElementById('eventCount').textContent = mapped;
+      document.getElementById('hudHigh').textContent = counts.HIGH || 0;
+      document.getElementById('hudMed').textContent = counts.MED || 0;
+      document.getElementById('hudLow').textContent = counts.LOW || 0;
+    }
+
+    function highlightFeedItem(artId) {
+      const items = document.querySelectorAll('.news-item');
+      items.forEach(el => el.classList.remove('active'));
+      const target = document.querySelector(`.news-item[data-art-id="${artId}"]`);
+      if (target) {
+        target.classList.add('active');
+        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    // ── Ticker ────────────────────────────────────────────────────────────────────
+    function renderTicker(items) {
+      const duped = [...items, ...items];
+      document.getElementById('tickerTrack').innerHTML = duped.map(i => `
+    <span class="ticker-item ${i.priority}">
+      <span class="dot"></span>
+      ${_esc(i.text)}
+      <span style="color:var(--muted);font-size:9px;"> — ${_esc(i.source)} ${_esc(i.time)}</span>
+      <span class="ticker-sep">◆</span>
+    </span>
+  `).join('');
+    }
+
+    function toggleTicker() {
+      const track = document.getElementById('tickerTrack');
+      const btn = document.querySelector('.ticker-pause-btn');
+      const paused = track.style.animationPlayState === 'paused';
+      track.style.animationPlayState = paused ? 'running' : 'paused';
+      btn.textContent = paused ? '❚❚' : '▶';
+      btn.setAttribute('aria-label', paused ? 'Pausar ticker' : 'Reanudar ticker');
+    }
+
+    // ── Feed ──────────────────────────────────────────────────────────────────────
+    const PLABELS = { HIGH: 'ALTO', MED: 'MEDIO', LOW: 'BAJO' };
+    const TICONS = { ESCALADA: '↑', DESESCALADA: '↓', NEUTRAL: '—' };
+    const TCOLORS = { ESCALADA: 'var(--accent)', DESESCALADA: 'var(--green)', NEUTRAL: 'var(--muted)' };
+
+    // Convierte strings tipo "1h", "30m", "2d" a minutos para ordenar por recencia
+    // "Ahora" = 0 (lo más reciente), "Reciente"/vacío/desconocido = 1 (va justo después de Ahora)
+    function parseTimeToMinutes(t) {
+      if (!t) return 1;
+      const s = String(t).trim().toLowerCase();
+      if (!s || s === 'now') return 0;
+      if (s === 'ahora')    return 0;   // más reciente de todo
+      if (s === 'reciente') return 1;   // justo después de "Ahora"
+      const m = s.match(/^(\d+)\s*m/i); if (m) return parseInt(m[1]);
+      const h = s.match(/^(\d+)\s*h/i); if (h) return parseInt(h[1]) * 60;
+      const d = s.match(/^(\d+)\s*d/i); if (d) return parseInt(d[1]) * 1440;
+      return 1; // formato desconocido → tratar como "Reciente"
+    }
+
+    // ── Feed Mixto: Stacking de Pulsos ───────────────────────────────────────
+    // Combina state.events (clusters del backend) con artículos individuales
+    // para generar un feed donde los eventos agrupados son expandibles
+    // y los artículos sin cluster se muestran como pulsos normales.
+
+    function _buildGroupedFeed() {
+      // 1. Recopilar IDs de artículos que ya están dentro de un evento
+      const clusteredTitles = new Set();
+      const events = (state.events || []).filter(ev => ev.articles && ev.articles.length >= 2);
+      events.forEach(ev => {
+        (ev.articles || []).forEach(art => {
+          // Usar título normalizado como key (los IDs pueden no coincidir)
+          clusteredTitles.add((art.title || '').trim().toLowerCase());
+        });
+      });
+
+      console.log('[CW] buildGroupedFeed:', events.length, 'clusters,', clusteredTitles.size, 'títulos agrupados, feed:', (state.feed||[]).length);
+
+      // 2. Artículos individuales = los que NO están en ningún cluster
+      const singles = (state.feed || []).filter(a => {
+        const key = (a.title || '').trim().toLowerCase();
+        return !clusteredTitles.has(key);
+      });
+
+      // 3. Construir lista mixta: tipo 'cluster' o tipo 'single'
+      const items = [];
+
+      events.forEach((ev, idx) => {
+        items.push({
+          type: 'cluster',
+          ev: ev,
+          idx: idx,
+          priority: ev.priority || 'LOW',
+          trend: ev.trend || 'NEUTRAL',
+          ts: ev.ts || 0,
+          time: null,
+        });
+      });
+
+      singles.forEach(a => {
+        items.push({
+          type: 'single',
+          art: a,
+          priority: a.priority || 'LOW',
+          trend: a.trend || 'NEUTRAL',
+          ts: a.ts || 0,
+          time: a.time,
+        });
+      });
+
+      // 4. Filtrar según el filtro activo
+      let filtered = items;
+      if (state.filter === 'HIGH') filtered = items.filter(i => i.priority === 'HIGH');
+      else if (state.filter === 'MED') filtered = items.filter(i => i.priority === 'MED');
+      else if (state.filter === 'esc') filtered = items.filter(i => i.trend === 'ESCALADA');
+      else if (state.filter === 'desc') filtered = items.filter(i => i.trend === 'DESESCALADA');
+
+      // 5. Ordenar por recencia
+      filtered.sort((a, b) => {
+        if (a.ts && b.ts) return b.ts - a.ts;
+        return parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
+      });
+
+      return filtered;
+    }
+
+    // Mapa de artículos para el modal
+    const _articleCache = {};
+    // Caché de eventos para clusters
+    const _clusterCache = {};
+
+    function renderFeed(isNew = false) {
+      // Limpiar caches para evitar memory leak en sesiones largas
+      Object.keys(_articleCache).forEach(k => delete _articleCache[k]);
+      Object.keys(_clusterCache).forEach(k => delete _clusterCache[k]);
+      const items = _buildGroupedFeed();
+      const el = document.getElementById('newsFeed');
+      if (!items.length) {
+        el.innerHTML = `<div style="padding:24px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);">Sin resultados para este filtro</div>`;
+        return;
+      }
+
+      el.innerHTML = items.map((item, i) => {
+        if (item.type === 'cluster') return _renderCluster(item.ev, item.idx, isNew && i < 3);
+        return _renderSingle(item.art, i, isNew && i < 3);
+      }).join('');
+    }
+
+    function _renderSingle(a, i, flash) {
+      if (a.id) _articleCache[a.id] = a;
+      const hasMap = !!(a.lat && a.lng);
+      return `
+    <article class="news-item ${flash ? 'new-item' : ''}"
+         data-action="select-item"
+         data-priority="${a.priority}"
+         data-art-id="${a.id || 0}">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span class="news-badge badge-${a.priority}">${PLABELS[a.priority] || a.priority}</span>
+        ${a.trend && a.trend !== 'NEUTRAL' ? `<span style="font-family:var(--mono);font-size:8px;color:${TCOLORS[a.trend]};">${TICONS[a.trend]} ${a.trend}</span>` : ''}
+        ${hasMap ? `<span style="font-family:var(--mono);font-size:7px;color:var(--blue);margin-left:auto;cursor:pointer;"
+          data-action="fly-to" data-art-id="${a.id}" tabindex="0" role="button">&#128205; MAPA</span>` : ''}
+      </div>
+      <h3 class="news-title">${_esc(a.title)}</h3>
+      ${a.body ? `<div class="news-body">${_esc(a.body)}</div>` : ''}
+      <div class="news-meta">
+        <span class="news-conf">\u2713 ${a.confidence ?? '\u2014'}%</span>
+        <span class="news-src">${_esc(a.source)}</span>
+        <time class="news-time" datetime="${a.ts ? new Date(a.ts * 1000).toISOString() : ''}">${_esc(a.time)}</time>
+      </div>
+      <div class="source-flags">${(a.flags || []).join(' ')}</div>
+    </article>`;
+    }
+
+    function _renderCluster(ev, idx, flash) {
+      _clusterCache[idx] = ev;
+      const srcCount = (ev.sources || []).length;
+      const artCount = ev.count || (ev.articles || []).length;
+      const vPct = ev.verification_pct || 0;
+      const confCol = vPct >= 85 ? 'var(--green)' : vPct >= 50 ? 'var(--accent2)' : 'var(--accent)';
+      const tIcon = TICONS[ev.trend] || '\u2014';
+      const tColor = TCOLORS[ev.trend] || 'var(--muted)';
+      // Tiempo relativo
+      let timeLabel = '';
+      if (ev.ts) {
+        const mins = Math.round((Date.now() / 1000 - ev.ts) / 60);
+        timeLabel = mins < 1 ? 'Ahora' : mins < 60 ? `${mins}m` : `${Math.round(mins/60)}h`;
+      }
+
+      // Artículos hijos
+      const children = (ev.articles || []).map((art, ci) => `
+        <div class="cluster-child" data-action="open-child" data-cluster-idx="${idx}" data-child-idx="${ci}" tabindex="0" role="button">
+          <div class="cluster-child-title">${_esc(art.title)}</div>
+          <div class="cluster-child-meta">
+            <span style="color:${(art.confidence ?? 0) >= 70 ? 'var(--green)' : 'var(--accent2)'};">\u2713 ${art.confidence ?? '\u2014'}%</span>
+            <span>${_esc(art.source)}</span>
+            <span style="margin-left:auto;">${art.time || ''}</span>
+          </div>
+        </div>`).join('');
+
+      return `
+    <article class="cluster-item ${flash ? 'new-item' : ''}" data-cluster-idx="${idx}">
+      <div class="cluster-header" data-action="toggle-cluster" data-cluster-idx="${idx}" tabindex="0" role="button" aria-expanded="false">
+        <div class="cluster-top-row">
+          <span class="news-badge badge-${ev.priority}">${PLABELS[ev.priority] || ev.priority}</span>
+          ${ev.trend && ev.trend !== 'NEUTRAL' ? `<span style="font-family:var(--mono);font-size:8px;color:${tColor};">${tIcon} ${ev.trend}</span>` : ''}
+          <span class="cluster-stack-badge">\u25A0 ${srcCount} fuente${srcCount !== 1 ? 's' : ''} \u00B7 ${artCount} art.</span>
+          <span class="cluster-conf-badge">
+            <span class="conf-bar"><span class="conf-fill" style="width:${vPct}%;background:${confCol};"></span></span>
+            <span style="color:${confCol};">${vPct}%</span>
+          </span>
+          <span class="cluster-chevron">\u25BC</span>
+        </div>
+        <h3 class="cluster-headline">${_esc(ev.headline)}</h3>
+        <div class="cluster-meta">
+          <span class="news-src">${(ev.sources || []).slice(0, 3).map(_esc).join(' \u00B7 ')}</span>
+          <time class="news-time" datetime="${ev.ts ? new Date(ev.ts * 1000).toISOString() : ''}">${timeLabel}</time>
+        </div>
+      </div>
+      <div class="cluster-children">
+        ${children}
+      </div>
+    </article>`;
+    }
+
+    function toggleCluster(clusterEl, idx) {
+      if (!clusterEl) return;
+      const wasOpen = clusterEl.classList.contains('open');
+      // Cerrar todos los demás
+      document.querySelectorAll('.cluster-item.open').forEach(el => {
+        if (el !== clusterEl) el.classList.remove('open');
+      });
+      clusterEl.classList.toggle('open', !wasOpen);
+      // Actualizar aria-expanded en todos los headers
+      document.querySelectorAll('.cluster-header[aria-expanded]').forEach(h => {
+        h.setAttribute('aria-expanded', h.closest('.cluster-item')?.classList.contains('open') ? 'true' : 'false');
+      });
+      // Marcar como activo
+      document.querySelectorAll('.news-item,.cluster-item').forEach(e => e.classList.remove('active'));
+      clusterEl.classList.add('active');
+    }
+
+    function _openChildArticle(clusterIdx, childIdx) {
+      const ev = _clusterCache[clusterIdx];
+      if (!ev || !ev.articles || !ev.articles[childIdx]) return;
+      const art = ev.articles[childIdx];
+      // Construir objeto compatible con openArticleModal
+      openArticleModal({
+        id: 0,
+        title: art.title || '',
+        body: art.body || ev.body || '',
+        source: art.source || '',
+        time: art.time || '',
+        priority: art.priority || ev.priority || 'LOW',
+        confidence: art.confidence ?? ev.confidence_avg ?? 0,
+        trend: ev.trend || 'NEUTRAL',
+        flags: [],
+        url: art.url || '',
+      });
+    }
+
+    function selectItem(el, artId) {
+      document.querySelectorAll('.news-item,.cluster-item').forEach(e => e.classList.remove('active'));
+      el.classList.add('active');
+      const art = _articleCache[artId];
+      if (art) openArticleModal(art);
+      if (artId && articleMarkerMap[artId]) flyToArticle(artId);
+    }
+
+    function openArticleModal(a) {
+      const col = { HIGH: 'var(--accent)', MED: 'var(--accent2)', LOW: 'var(--blue)' }[a.priority] || 'var(--blue)';
+      const priorityLabel = { HIGH: 'ALTO', MED: 'MEDIO', LOW: 'BAJO' }[a.priority] || a.priority;
+      const trendLabel = { ESCALADA: '↑ ESCALADA', DESESCALADA: '↓ DESESCALADA', NEUTRAL: '— NEUTRAL' }[a.trend] || '';
+
+      document.getElementById('modalKeywordTitle').innerHTML =
+        `<span style="color:${col};font-size:10px;">&#9632; ${priorityLabel}</span>&nbsp;&nbsp;${_esc(a.source)}`;
+      document.getElementById('modalKeywordTitle').style.color = 'var(--text)';
+
+      document.getElementById('modalKeywordBody').innerHTML = `
+        <div style="margin-bottom:14px;">
+          <div style="font-size:15px;font-weight:600;line-height:1.5;color:var(--text);margin-bottom:10px;">${_esc(a.title)}</div>
+          ${a.body ? `<div style="font-size:12px;color:var(--muted);line-height:1.7;">${_esc(a.body)}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;font-family:var(--mono);font-size:10px;color:var(--muted);border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;">
+          <span style="color:${col};">&#9632; ${priorityLabel}</span>
+          ${trendLabel ? `<span>${trendLabel}</span>` : ''}
+          <span>📰 ${_esc(a.source) || 'Desconocido'}</span>
+          <span>🕒 ${_esc(a.time) || 'Reciente'}</span>
+          ${a.confidence != null ? `<span>✓ Conf. ${a.confidence}%</span>` : ''}
+          ${a.lat && a.lng ? `<span>📍 ${a.lat.toFixed(1)}°N ${a.lng.toFixed(1)}°E</span>` : ''}
+        </div>
+        ${(a.flags || []).length ? `<div style="font-size:16px;margin-top:10px;">${a.flags.join(' ')}</div>` : ''}
+        ${a.url ? `
+          <div style="margin-top:16px;">
+            <a href="${_safeUrl(a.url)}" target="_blank"
+               style="display:inline-block;padding:8px 16px;background:rgba(0,180,255,0.1);
+                 border:1px solid rgba(0,180,255,0.3);border-radius:4px;
+                 color:var(--blue);font-family:var(--mono);font-size:10px;
+                 text-decoration:none;letter-spacing:0.5px;">
+              VER FUENTE ORIGINAL →
+            </a>
+          </div>` : ''}
+      `;
+
+      const modal = document.getElementById('trendModal');
+      modal.style.display = 'flex';
+      setTimeout(() => modal.classList.add('open'), 10);
+    }
+
+    function filterFeed(type, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      state.filter = type;
+      renderFeed();
+    }
+
+    // ── Markets ───────────────────────────────────────────────────────────────────
+    // sparkLine: gráfico de línea SVG con datos históricos reales del backend
+    // spark = array [0..1] normalizado de cierres horarios enviado por el backend
+    let _sparkIdCounter = 0;
+    function sparkLine(spark, up, label) {
+      const W = 80, H = 26, PAD = 3;
+      const col = up ? '#00FF88' : '#FF3B3B';
+      const safeLabel = label ? _esc(label) : '';
+
+      if (!spark || spark.length < 2) {
+        return `<svg role="img" aria-label="${safeLabel}: sin datos" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+          <line x1="${PAD}" y1="${H/2}" x2="${W-PAD}" y2="${H/2}"
+            stroke="rgba(90,98,120,0.3)" stroke-width="1" stroke-dasharray="2,2"/>
+        </svg>`;
+      }
+
+      const n = spark.length;
+      const pts = spark.map((v, i) => {
+        const x = PAD + (i / (n - 1)) * (W - PAD * 2);
+        const y = PAD + (1 - v) * (H - PAD * 2);
+        return [x, y];
+      });
+
+      const polyline = pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+      const [lx, ly] = pts[pts.length - 1];
+      const areaPath = `M${pts[0][0].toFixed(1)},${H - PAD} `
+        + pts.map(([x, y]) => `L${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+        + ` L${pts[n-1][0].toFixed(1)},${H - PAD} Z`;
+      const gid = `sg${_sparkIdCounter++}`;
+
+      return `<svg role="img" aria-label="${safeLabel}, tendencia ${up ? 'alcista' : 'bajista'}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible">
+        <defs>
+          <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${col}" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="${col}" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="${areaPath}" fill="url(#${gid})"/>
+        <polyline points="${polyline}" fill="none" stroke="${col}"
+          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.5" fill="${col}"/>
+      </svg>`;
+    }
+
+    // Recalcula delta día-a-día desde price y prev_price (cierre anterior)
+    function calcDayDelta(c) {
+      if (!c.price || !c.prev_price || c.price === 'N/D') return c;
+      const price    = parseFloat(String(c.price).replace(/,/g, ''));
+      const prevPrice = parseFloat(String(c.prev_price).replace(/,/g, ''));
+      if (isNaN(price) || isNaN(prevPrice) || prevPrice === 0) return c;
+      const pct = ((price - prevPrice) / prevPrice) * 100;
+      return { ...c, delta: (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%', up: pct >= 0 };
+    }
+
+    function renderMarkets(markets) {
+      const { forex = [], signal, last_update } = markets;
+      // Aplicar corrección día-a-día a commodities y forex
+      const commodities = (markets.commodities || []).map(calcDayDelta);
+      const forexList   = forex.map(f => {
+        if (f.price && f.prev_price && !f.flat) {
+          const price    = parseFloat(String(f.price).replace(/,/g, ''));
+          const prevPrice = parseFloat(String(f.prev_price).replace(/,/g, ''));
+          if (!isNaN(price) && !isNaN(prevPrice) && prevPrice > 0) {
+            const pct = ((price - prevPrice) / prevPrice) * 100;
+            return { ...f, delta: (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%', up: pct >= 0 };
+          }
+        }
+        return f;
+      });
+
+      // Sentiment global
+      const ups = commodities.filter(c => c.up && c.price !== 'N/D').length;
+      const downs = commodities.filter(c => !c.up && c.price !== 'N/D').length;
+      const sent = ups > downs ? 'ALCISTA' : downs > ups ? 'BAJISTA' : 'MIXTO';
+      const sentCls = ups > downs ? 'bull' : downs > ups ? 'bear' : 'mix';
+      document.getElementById('mktSentiment').textContent = sent;
+      document.getElementById('mktSentiment').className = `sentiment-tag ${sentCls}`;
+
+      // Badge de datos antiguos (>30 min)
+      const staleEl = document.getElementById('mktStale');
+      if (last_update) {
+        const ageMin = (Date.now() / 1000 - last_update) / 60;
+        staleEl.style.display = ageMin > 30 ? 'inline' : 'none';
+        staleEl.textContent = `DATOS DE HACE ${Math.round(ageMin)}min`;
+      }
+
+      // Señal de correlación tensión ↔ mercado
+      const signalEl = document.getElementById('marketSignalBadge');
+      if (signal) {
+        signalEl.innerHTML = `<span class="market-signal ${signal.cls}">${signal.label}</span>
+          <span style="font-family:var(--mono);font-size:7px;color:var(--muted);margin-left:6px;">
+            TENSIÓN ${signal.tension}% · PETRÓLEO ${signal.oil_delta >= 0 ? '+' : ''}${signal.oil_delta}%
+          </span>`;
+      }
+
+      document.getElementById('commoditiesList').innerHTML = commodities.map(c => {
+        const isND  = c.price === 'N/D' || c.raw_price == null;
+        const col   = isND ? 'var(--muted)' : c.up ? 'var(--green)' : 'var(--accent)';
+        const arrow = c.up ? '▲' : '▼';
+        // Cambio absoluto: raw_abs_delta del backend, o calculado desde price/prev_price
+        let absStr = '';
+        if (!isND) {
+          const absVal = c.raw_abs_delta != null
+            ? c.raw_abs_delta
+            : (parseFloat(String(c.price).replace(/,/g,'')) - parseFloat(String(c.prev_price || 0).replace(/,/g,'')));
+          absStr = (absVal >= 0 ? '+' : '') + absVal.toFixed(2);
+        }
+        const pctStr = isND ? '—' : (c.delta || '—');
+        return `
+    <li class="commodity-card">
+      <div>
+        <div class="commodity-name">${c.name} <span style="color:#8a94a8;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1.5px;margin-left:4px;opacity:0.7;">${c.ticker || ''}</span></div>
+        <div class="commodity-price ${isND ? '' : c.up ? 'up' : 'down'}">${c.price}</div>
+        <div class="commodity-delta ${c.up ? 'up' : 'down'}">
+          ${!isND ? `${arrow} ${absStr} (${pctStr})` : pctStr}
+        </div>
+      </div>
+      <div class="commodity-right">
+        <div class="commodity-chart">${sparkLine(c.spark, c.up, c.name)}</div>
+      </div>
+    </li>`;
+      }).join('');
+
+      document.getElementById('forexGrid').innerHTML = forexList.map(f => `
+    <li class="forex-cell">
+      <div class="forex-pair">${f.pair}</div>
+      <div class="forex-price">${f.price}</div>
+      <div class="forex-delta" style="color:${f.flat ? 'var(--muted)' : f.up ? 'var(--green)' : 'var(--accent)'};">
+        ${f.flat ? '—' : (f.up ? '▲' : '▼') + ' ' + f.delta}
+      </div>
+    </li>`).join('');
+
+      document.getElementById('mktTime').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ── Keywords ──────────────────────────────────────────────────────────────────
+
+    // ── Termómetro horizontal de tensión ──────────────────────────────────────
+    function renderThermometer() {
+      const mercuryEl = document.getElementById('thermoMercury');
+      const trendEl   = document.getElementById('thermoTrendBadge');
+      if (!mercuryEl) return;
+
+      const v = Math.max(0, Math.min(100, Math.round(state.tension || 50)));
+
+      const col   = v >= 70 ? '#FF3B3B' : v >= 40 ? '#FF7A00' : '#00FF88';
+      const label = v >= 70 ? '↑ ALTA · ' + v + '%'
+                  : v >= 40 ? '→ MEDIA · ' + v + '%'
+                  : '↓ BAJA · '  + v + '%';
+
+      mercuryEl.style.width           = v + '%';
+      mercuryEl.style.backgroundColor = col;
+
+      if (trendEl) { trendEl.textContent = label; trendEl.style.color = col; }
+    }
+
+    // Normaliza texto para búsqueda: minúsculas + quitar acentos
+    function normText(s) {
+      return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function renderKeywords(keywords) {
+      if (!keywords || !keywords.length) return;
+
+      // 1. Recontar artículos reales en el feed por cada keyword (normalización de acentos)
+      const enriched = keywords.map(k => {
+        const kNorm = normText(k.name);
+        const feedCount = state.feed.filter(a =>
+          normText(a.title).includes(kNorm) || normText(a.body).includes(kNorm)
+        ).length;
+        return { ...k, feedCount };
+      });
+
+      // 2. Ordenar por conteo en feed (desc); si empate, por conteo backend (desc)
+      enriched.sort((a, b) => b.feedCount - a.feedCount || b.count - a.count);
+
+      // Solo las 4 tendencias más repetidas
+      const top4 = enriched.slice(0, 4);
+
+      // 3. Lista simple: numerada, sin colores ni barras, solo nombre clickable
+      document.getElementById('keywordsList').innerHTML = top4.map((k, i) => {
+        const nameSafe = k.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `
+    <li class="kw-item" data-action="open-trend" data-keyword="${nameSafe}" tabindex="0" role="button" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);" title="Ver noticias de '${nameSafe}'">
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted);min-width:16px;">${i + 1}.</span>
+      <span style="font-size:14px;color:var(--text);font-weight:700;">${_esc(k.name)}</span>
+    </li>`;
+      }).join('');
+    }
+
+    // Modal de Detalles de Tendencias
+    function openTrendModal(keyword, color) {
+      const col = color || 'var(--accent)';
+      document.getElementById('modalKeywordTitle').textContent = keyword;
+      document.getElementById('modalKeywordTitle').style.color = col;
+
+      const filterKw = normText(keyword);
+      // Filtrar artículos locales en caché que contengan la keyword (en título o cuerpo, con normalización)
+      const matchingArts = state.feed.filter(a =>
+        normText(a.title).includes(filterKw) || normText(a.body).includes(filterKw)
+      );
+
+      const bodyEl = document.getElementById('modalKeywordBody');
+      if (matchingArts.length === 0) {
+        bodyEl.innerHTML = `<div style="color:var(--muted);text-align:center;padding:20px;">No se encontraron artículos recientes en caché para esta tendencia.</div>`;
+      } else {
+        bodyEl.innerHTML = matchingArts.map(a => `
+          <div class="modal-art" style="border-left-color:${col}">
+            <div class="modal-art-title">${_esc(a.title)}</div>
+            <div class="modal-art-meta">
+              <span>🛡 ${_esc(a.source) || 'Desconocida'}</span>
+              <span>🕒 ${_esc(a.time) || 'Reciente'}</span>
+              <span style="color:${a.priority === 'HIGH' ? 'var(--accent)' : 'var(--text)'}">${a.priority}</span>
+              ${a.url ? `<a href="${_safeUrl(a.url)}" target="_blank" class="modal-art-link">LEER MÁS →</a>` : ''}
+            </div>
+          </div>
+        `).join('');
+      }
+
+      const modal = document.getElementById('trendModal');
+      modal.style.display = 'flex';
+      // Pequeño timeout para permitir la transición de opacidad
+      setTimeout(() => modal.classList.add('open'), 10);
+    }
+
+    function closeTrendModal(e) {
+      // Llamada desde el botón u overlay: siempre cerrar
+      const modal = document.getElementById('trendModal');
+      modal.classList.remove('open');
+      setTimeout(() => { modal.style.display = 'none'; }, 200);
+    }
+
+    // ── Countdown de próxima actualización ───────────────────────────────────────
+    let nextUpdateAt = 0;  // timestamp (ms) de la próxima actualización esperada
+    const FEED_INTERVAL = 300;  // 5 min en segundos
+
+    function resetCountdown() {
+      nextUpdateAt = Date.now() + FEED_INTERVAL * 1000;
+    }
+
+    function updateCountdown() {
+      const el = document.getElementById('nextUpdateLabel');
+      if (!el || !nextUpdateAt) return;
+      const secs = Math.max(0, Math.round((nextUpdateAt - Date.now()) / 1000));
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      el.textContent = `${m}:${String(s).padStart(2, '0')} próx.`;
+      el.style.color = secs < 30 ? 'var(--accent2)' : 'var(--muted)';
+    }
+
+    // ── Índice de tensión 0-100: media ponderada de severidad ──
+    // HIGH=3, MED=1, LOW=0. Índice = puntos / máximo posible × 100.
+    function calcTensionIndex() {
+      const feed = state.feed;
+      if (!feed.length) return state.tension || 50;
+      const n    = feed.length;
+      const high = feed.filter(a => a.priority === 'HIGH').length;
+      const med  = feed.filter(a => a.priority === 'MED').length;
+      return Math.max(0, Math.min(100, Math.round((3 * high + med) / (3 * n) * 100)));
+    }
+
+    // ── Apply full state update ───────────────────────────────────────────────────
+    // ── Actualizar indicadores de salud de fuentes ──────────────────────────────────
+    function updateSourceHealth(health) {
+      if (!health) return;
+      const dotMap = { gdelt: 'gdeltDot', guardian: 'guardianDot', rss: 'rssDot', nitter: 'nitterDot', markets: 'marketsDot' };
+      const guardianStatus = health.guardian || 'desconocido';
+
+      const toCls = s => {
+        if (s === 'ok')          return 'status-dot';           // verde
+        if (s === 'alerta')      return 'status-dot orange';    // naranja
+        if (s === 'error')       return 'status-dot offline';   // gris
+        return 'status-dot orange';                              // desconocido → naranja (cargando)
+      };
+
+      const SOURCE_LABELS = { gdelt: 'GDELT', guardian: 'Guardian', rss: 'RSS', nitter: 'Nitter/X', markets: 'Mercados' };
+
+      for (const [key, id] of Object.entries(dotMap)) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const s = key === 'guardian' ? guardianStatus : (health[key] || 'desconocido');
+        el.className = toCls(s);
+        const count = state.source_counts?.[key];
+        const countStr = (count !== undefined && key !== 'markets')
+          ? ` — ${count} artículo${count !== 1 ? 's' : ''}`
+          : '';
+        const statusStr = s === 'error' ? ' (SIN RESPUESTA)' : s === 'alerta' ? ' (cargando)' : '';
+        el.title = `${SOURCE_LABELS[key] ?? key}${statusStr}${countStr}`;
+      }
+    }
+
+    function applyUpdate(data, isNew = false) {
+      if (data.feed)             state.feed    = data.feed;
+      if (data.events !== undefined) state.events = data.events;
+      if (data.keywords) state.keywords = data.keywords;
+      if (data.ticker)   state.ticker   = data.ticker;
+      if (data.markets)  state.markets  = data.markets;
+      if (data.active_count  !== undefined) state.activeCount  = data.active_count;
+      if (data.tension_count !== undefined) state.tensionCount = data.tension_count;
+      if (data.tension_history && data.tension_history.length)
+        state.tensionHistory = data.tension_history;
+      if (data.source_counts) state.source_counts = data.source_counts;
+      if (data.source_health) updateSourceHealth(data.source_health);
+      if (data.osint_health) updateOsintHealth(data.osint_health);
+
+      // OSINT layers update (from osint_update or initial_state)
+      if (data.layers) updateOsintLayers(data.layers);
+      if (data.osint) updateOsintLayers(data.osint);
+
+      // Actualizar índice de tensión desde datos reales (o usar el enviado por el backend)
+      if (data.tension !== undefined && data.tension > 0) {
+        state.tension = data.tension;
+      } else if (state.feed.length) {
+        state.tension = calcTensionIndex();
+      }
+      // Añadir punto al historial local cada vez que haya un nuevo cálculo
+      const nowTs = Math.floor(Date.now() / 1000);
+      const lastHist = state.tensionHistory[state.tensionHistory.length - 1];
+      if (!lastHist || nowTs - lastHist.t >= 60) {
+        state.tensionHistory.push({ t: nowTs, v: state.tension });
+        if (state.tensionHistory.length > 48) state.tensionHistory.shift(); // máx ~4h
+      }
+
+      renderFeed(isNew);
+      if (state.ticker.length) renderTicker(state.ticker);
+      if (state.keywords.length) renderKeywords(state.keywords);
+      if (state.markets && state.markets.commodities && state.markets.commodities.length)
+        renderMarkets(state.markets);
+      updateMapMarkers(state.feed);
+      renderThermometer();
+
+      document.getElementById('activeCount').textContent = state.activeCount;
+      document.getElementById('tensionCount').textContent = state.tensionCount;
+      document.getElementById('articleCount').textContent = state.feed.length;
+      document.getElementById('lastUpdate').textContent =
+        new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      // Reiniciar countdown en cada actualización de feed
+      if (data.feed) resetCountdown();
+    }
+
+    // ── WebSocket ─────────────────────────────────────────────────────────────────
+    function setWsStatus(ok) {
+      state.wsConnected = ok;
+      const dot = document.getElementById('wsDot');
+      const txt = document.getElementById('wsStatus');
+      dot.className = ok ? 'status-dot' : 'status-dot offline';
+      txt.textContent = ok ? 'BACKEND: Conectado' : 'BACKEND: Desconectado (offline)';
+      txt.style.color = ok ? 'var(--green)' : 'var(--muted)';
+    }
+
+    function connectWS() {
+      try { ws = new WebSocket(WS_URL); } catch (e) {
+        setTimeout(connectWS, _wsRetryDelay);
+        _wsRetryDelay = Math.min(_wsRetryDelay * 2, WS_MAX_DELAY);
+        return;
+      }
+
+      ws.onopen = () => {
+        _wsRetryDelay = WS_INITIAL_DELAY;
+        setWsStatus(true);
+        pingInt = setInterval(() => { if (ws.readyState === 1) ws.send('ping'); }, 30000);
+      };
+      ws.onmessage = ({ data }) => {
+        try {
+          const d = JSON.parse(data);
+          if (d.type === 'pong') return;
+          applyUpdate(d, state.feed.length > 0);
+        } catch { }
+      };
+      ws.onerror = () => setWsStatus(false);
+      ws.onclose = () => {
+        setWsStatus(false);
+        clearInterval(pingInt);
+        setTimeout(connectWS, _wsRetryDelay);
+        _wsRetryDelay = Math.min(_wsRetryDelay * 2, WS_MAX_DELAY);
+      };
+    }
+
+    async function fetchREST() {
+      try {
+        const [fR, mR, oR] = await Promise.all([
+          fetch(`${BACKEND}/api/feed`),
+          fetch(`${BACKEND}/api/markets`),
+          fetch(`${BACKEND}/api/osint`),
+        ]);
+        const fD = await fR.json(), mD = await mR.json(), oD = await oR.json();
+        applyUpdate({ ...fD, markets: mD, ...oD }, state.feed.length > 0);
+        setWsStatus(true);
+        document.getElementById('wsDot').className = 'status-dot orange';
+        document.getElementById('wsStatus').textContent = 'BACKEND: Modo REST';
+        return true;
+      } catch { return false; }
+    }
+
+    function loadFallback() {
+      setWsStatus(false);
+      applyUpdate({
+        feed: STATIC.feed,
+        events: STATIC.events,
+        keywords: STATIC.keywords,
+        ticker: STATIC.ticker,
+        markets: STATIC.markets,
+        tension_history: STATIC.tension_history,
+        layers: STATIC.layers,
+        active_count: 3,
+        tension_count: 2,
+      });
+    }
+
+    async function forceRefresh() {
+      const b = document.getElementById('btnLive') || document.querySelector('.btn-live');
+      if (b) b.textContent = '⟳ …';
+      const ok = await fetchREST();
+      if (!ok) loadFallback();
+      if (b) b.textContent = '⬤ EN VIVO';
+    }
+
+    // ── Boot ──────────────────────────────────────────────────────────────────────
+    function boot() {
+      initMap();
+      loadFallback();
+      
+      // Indicador visual de modo DEMO
+      document.getElementById('wsDot').className = 'status-dot orange';
+      document.getElementById('wsStatus').textContent = 'MODO DEMO (Caché)';
+
+      // Reloj + countdown cada segundo
+      setInterval(() => { updateClock(); updateCountdown(); }, 1000);
+      updateClock();
+      resetCountdown();
+
+      window.addEventListener('resize', () => { if (mapInstance) mapInstance.invalidateSize(); });
+    }
+
+    // ── Tooltip del termómetro de tensión ─────────────────────────────────────
+    (function () {
+      const btn = document.getElementById('thermoInfoBtn');
+      const tip = document.getElementById('thermoTooltip');
+      if (!btn || !tip) return;
+      btn.addEventListener('mouseenter', () => tip.classList.add('visible'));
+      btn.addEventListener('mouseleave', () => tip.classList.remove('visible'));
+    })();
+
+    // ── Event Delegation Hub ──────────────────────────────────────────────────
+    (function setupDelegation() {
+      function handleAction(e) {
+        const el = e.target.closest('[data-action]');
+        if (!el) return;
+        const action = el.dataset.action;
+        switch (action) {
+          case 'select-item':
+            selectItem(el.closest('.news-item') || el, +(el.closest('[data-art-id]')?.dataset.artId || 0));
+            break;
+          case 'fly-to':
+            e.stopPropagation();
+            flyToArticle(+el.dataset.artId);
+            break;
+          case 'open-child':
+            e.stopPropagation();
+            _openChildArticle(+el.dataset.clusterIdx, +el.dataset.childIdx);
+            break;
+          case 'toggle-cluster':
+            toggleCluster(el.closest('.cluster-item'), +el.dataset.clusterIdx);
+            break;
+          case 'open-trend':
+            openTrendModal(el.dataset.keyword);
+            break;
+          case 'filter-feed':
+            filterFeed(el.dataset.filter, el);
+            break;
+          case 'toggle-filters-panel':
+            document.getElementById('mapFiltersPanel').classList.toggle('collapsed');
+            break;
+          case 'toggle-layer':
+            toggleLayer(el.dataset.layer, el);
+            break;
+          case 'toggle-osint':
+            toggleOsintLayer(el.dataset.osint, el);
+            break;
+          case 'vista-limpia':
+            toggleVistaLimpia(el);
+            break;
+          case 'force-refresh':
+            forceRefresh();
+            break;
+          case 'close-modal':
+            closeTrendModal();
+            break;
+          case 'toggle-ticker':
+            toggleTicker();
+            break;
+          case 'mobile-tab':
+            switchMobileTab(el.dataset.tab, el);
+            break;
+          case 'toggle-sidebar':
+            document.querySelector('.right-panel').classList.toggle('sidebar-open');
+            break;
+        }
+      }
+      document.addEventListener('click', handleAction);
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          var m = document.getElementById('trendModal');
+          if (m && m.classList.contains('active')) closeTrendModal();
+          return;
+        }
+        if (e.key === 'Enter' || e.key === ' ') {
+          var el = e.target.closest('[data-action]');
+          if (el && el.tagName !== 'BUTTON') {
+            e.preventDefault();
+            handleAction(e);
+          }
+        }
+      });
+      document.getElementById('trendModal').addEventListener('click', function(e) {
+        if (e.target === document.getElementById('trendModal')) closeTrendModal();
+      });
+    })();
+
+    // ── Responsive: mobile tabs + resize handler ──────────────────────────
+    function switchMobileTab(tab, btn) {
+      var panels = { feed: '.left-panel', map: '.map-area', data: '.right-panel' };
+      Object.values(panels).forEach(function(sel) {
+        var el = document.querySelector(sel);
+        if (el) el.classList.remove('mobile-visible');
+      });
+      var target = document.querySelector(panels[tab]);
+      if (target) target.classList.add('mobile-visible');
+      document.querySelectorAll('.mobile-nav-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      window.scrollTo(0, 0);
+      if (tab === 'map' && typeof map !== 'undefined' && map) {
+        map.invalidateSize();
+        setTimeout(function() { map.invalidateSize(); }, 300);
+      }
+    }
+
+    function handleResponsiveInit() {
+      var isMobile = window.innerWidth <= 768;
+      var panels = ['.left-panel', '.map-area', '.right-panel'];
+      if (isMobile) {
+        panels.forEach(function(sel) {
+          var el = document.querySelector(sel);
+          if (el) el.classList.remove('mobile-visible');
+        });
+        var feed = document.querySelector('.left-panel');
+        if (feed) feed.classList.add('mobile-visible');
+        var btns = document.querySelectorAll('.mobile-nav-btn');
+        btns.forEach(function(b) { b.classList.remove('active'); });
+        if (btns[0]) btns[0].classList.add('active');
+      } else {
+        panels.forEach(function(sel) {
+          var el = document.querySelector(sel);
+          if (el) el.classList.remove('mobile-visible');
+        });
+        var rp = document.querySelector('.right-panel');
+        if (rp) rp.classList.remove('sidebar-open');
+      }
+    }
+
+    window.addEventListener('resize', handleResponsiveInit);
+    handleResponsiveInit();
+
+    boot();
+  </script>
+</body>
+
+</html>
