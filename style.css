@@ -379,6 +379,17 @@ h1, h2, h3, h4, .nav-logo {
     transition: transform 0.5s ease;
 }
 
+.avatar-placeholder::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 40%;
+    background: linear-gradient(to top, var(--bg-color) 0%, transparent 100%);
+    pointer-events: none;
+}
+
 .avatar-placeholder:hover {
     transform: scale(1.02);
 }
