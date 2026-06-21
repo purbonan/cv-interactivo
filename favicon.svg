@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <rect width="100" height="100" rx="22" fill="#050508"/>
+  <text x="50" y="65" text-anchor="middle"
+        font-family="-apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
+        font-weight="800" font-size="46" letter-spacing="-2">
+    <tspan fill="#e0e0e0">PU</tspan><tspan fill="#c9a847">.</tspan>
+  </text>
+</svg>
