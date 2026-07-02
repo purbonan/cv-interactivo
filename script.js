@@ -40,8 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
        TYPEWRITER EFFECT
        ========================================= */
     const roles = [
+        "Comunicador",
         "Periodista",
-        "Comunicador Audiovisual",
         "Redactor",
         "Locutor",
         "Fotógrafo"
